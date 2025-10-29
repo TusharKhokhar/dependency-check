@@ -3,7 +3,7 @@ const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const model = require('../models/index')
 const ERROR = require('../helpers/error-keys')
-const { generateCode, getGroupIds, assignUserBalance, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, findOrCreateAccount, defaultGroupID, processUserWithoutCreation } = require('../helpers/utils');
+const { generateCode, getGroupIds, assignUserBalance, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, findOrCreateAccount, defaultGroupID } = require('../helpers/utils');
 const { STANDARD_TIER, POLARIS_API_URL, POLARIS_PATRON_AUTHENTICATION_PATH, POLARIS_PATRON_BASIC_DETAILS} = require('../helpers/constants');
 const { setSuccessResponse, setErrorResponse, setErrorResponseByServer, setConnectionErrorResponse} = require('../services/api-handler');
 const { isConnectionError } = require('../helpers/connectionError');
@@ -18,14 +18,14 @@ const log = new CustomLogger()
 
 module.exports.polarisLogin = async (req, res, db, authProvider) => {
     try {
-        let { barcode, password, orgId, EasybookingRuleTest } = req.body;
+        let { barcode, password, orgId, } = req.body;
         const { headers } = req;
         const tier = headers.tier ? headers.tier : STANDARD_TIER;
         const { PolarisConfig: {LoginType} } = authProvider;
         if (LoginType === 'BarcodeWithPin') {
-            await loginWithCardPin(authProvider, barcode, password, orgId, db, tier, req, res, EasybookingRuleTest)
+            await loginWithCardPin(authProvider, barcode, password, orgId, db, tier, req, res)
         } else if (LoginType === 'BarcodeOnly') {
-            await loginWithBarCode(authProvider, barcode, password, orgId, db, tier, req, res, EasybookingRuleTest)
+            await loginWithBarCode(authProvider, barcode, password, orgId, db, tier, req, res)
         }
     } catch (err) {
         log.error('catch error......', err);
@@ -33,9 +33,9 @@ module.exports.polarisLogin = async (req, res, db, authProvider) => {
     }
 }
 
-const loginWithCardPin = async (authProvider, barcode, password, orgId, db, tier, req, res, EasybookingRuleTest) => {
+const loginWithCardPin = async (authProvider, barcode, password, orgId, db, tier, req, res) => {
     try {
-        const { PolarisConfig, Mappings, CustomerID, _id, AllowUserCreation} = authProvider;
+        const { PolarisConfig, Mappings, CustomerID, _id} = authProvider;
         const { Host, PAPIAccessId, PAPIAccessKey } = PolarisConfig;
      
         const apiURL = `${Host}${POLARIS_API_URL}/${POLARIS_PATRON_AUTHENTICATION_PATH}`;
@@ -48,16 +48,7 @@ const loginWithCardPin = async (authProvider, barcode, password, orgId, db, tier
         const getSignature = await getPAPIHash(PAPIAccessKey, 'GET', basicAPIUrl, date, dataSet.AccessSecret);
         const {PatronBasicData: data} = await fetchPatronBasicData(PAPIAccessId, getSignature, barcode, dataSet.AccessSecret, basicAPIUrl, date)
         log.info("Petron Details ****", JSON.stringify(data))
-        const mappedUserDetails = await mapUserInfoForPatron(data, Mappings, db, authProvider, hashId, EasybookingRuleTest)
-
-        if (AllowUserCreation === false) {
-          return await getUserDataForValidation(db, mappedUserDetails, authProvider, res);
-        }
-
-        if (EasybookingRuleTest === true) {
-            return setSuccessResponse({ hashId: hashId }, res, req);
-        }
-
+        const mappedUserDetails = await mapUserInfoForPatron(data, Mappings, db, authProvider)
         const user = await model.users.findUserByUserName(db, mappedUserDetails["Username"]?.toString(), orgId, _id)
         const accountIdFromIdpRes = mappedUserDetails.AccountID ? mappedUserDetails.AccountID : null;
         const accountId = await findOrCreateAccount({
@@ -90,9 +81,9 @@ const loginWithCardPin = async (authProvider, barcode, password, orgId, db, tier
     }
 }
 
-const loginWithBarCode = async (authProvider, barcode, password, orgId, db, tier, req, res, EasybookingRuleTest) => {
+const loginWithBarCode = async (authProvider, barcode, password, orgId, db, tier, req, res) => {
     try {
-        const { PolarisConfig, Mappings, CustomerID, _id, AllowUserCreation} = authProvider;
+        const { PolarisConfig, Mappings, CustomerID, _id} = authProvider;
         const { Host, PAPIAccessId, PAPIAccessKey, Domain, Username, Password } = PolarisConfig;
 
         const apiURL = `${Host}/PAPIService/REST/protected/v1/1033/1/1/authenticator/staff`;
@@ -105,16 +96,7 @@ const loginWithBarCode = async (authProvider, barcode, password, orgId, db, tier
         const getSignature = await getPAPIHash(PAPIAccessKey, 'GET', basicAPIUrl, date, dataSet.AccessSecret);
         const {PatronBasicData: data} = await fetchPatronBasicData(PAPIAccessId, getSignature, barcode, dataSet.AccessSecret, basicAPIUrl, date)
         log.info("Petron Details ****", JSON.stringify(data))
-        const mappedUserDetails = await mapUserInfoForPatron(data, Mappings, db, authProvider, hashId, EasybookingRuleTest)
-
-        if (AllowUserCreation === false) {
-          return await getUserDataForValidation(db, mappedUserDetails, authProvider, res);
-        }
-
-        if (EasybookingRuleTest === true) {
-            return setSuccessResponse({ hashId: hashId }, res, req);
-        }
-
+        const mappedUserDetails = await mapUserInfoForPatron(data, Mappings, db, authProvider)
         const user = await model.users.findUserByUserName(db, mappedUserDetails["Username"]?.toString(), orgId, _id)
         const accountIdFromIdpRes = mappedUserDetails.AccountID ? mappedUserDetails.AccountID : null;
         const accountId = await findOrCreateAccount({
@@ -392,7 +374,7 @@ const getPAPIHash = async (papiAccessKey, httpMethod, uri, date, patronPassword)
  * @returns {Promise<{CardNumber: string, Username: string, FirstName: string, PrimaryEmail: string, LastName: string, Mobile: string, GroupID: *[]}>}
  */
 
-const mapUserInfoForPatron = async (data, dbMappings, db, authProviderConfig, hashId, EasybookingRuleTest) => {
+const mapUserInfoForPatron = async (data, dbMappings, db, authProviderConfig) => {
     let mappingsOfUser = {
         Username: '',
         PrimaryEmail: '',
@@ -410,22 +392,8 @@ const mapUserInfoForPatron = async (data, dbMappings, db, authProviderConfig, ha
     mappingsOfUser['Mobile'] = data[dbMappings['Mobile']]
     mappingsOfUser["GroupID"] = dbMappings["GroupName"]
       ? await getGroupIds(db, data, authProviderConfig)
-      : await getMatchingGroups(db, data, authProviderConfig, hashId, EasybookingRuleTest);
+      : await getMatchingGroups(db, data, authProviderConfig);
     mappingsOfUser['CardNumber'] = data[dbMappings['CardNumber']];
     mappingsOfUser['AccountID'] = data[dbMappings['Account']]
     return mappingsOfUser
-}
-
-const getUserDataForValidation = async (db, mappedUserDetails, authProvider, res) => {
-    if (!mappedUserDetails["GroupID"]?.length) {
-        mappedUserDetails.GroupID = await defaultGroupID(db, authProvider);
-    }
-    const userDetails = await processUserWithoutCreation({
-      db,
-      mappedData: mappedUserDetails,
-      authProviderConfig: authProvider,
-      hashId,
-      EasybookingRuleTest
-    });
-    return setSuccessResponse(userDetails, res);
 }

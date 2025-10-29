@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const model = require('../models/index')
 const ERROR = require('../helpers/error-keys')
 const { getDb, isolatedDatabase } = require("../config/db");
-const { generateCode, assignUserBalance, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, findOrCreateAccount, defaultGroupID, processUserWithoutCreation } = require('../helpers/utils');
+const { generateCode, assignUserBalance, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, findOrCreateAccount, defaultGroupID } = require('../helpers/utils');
 const { STANDARD_TIER, SIRSI_RESOURCE_USER, SIRSI_PATRON_LOGIN_END_POINT, SIRSI_STAFF_LOGIN_END_POINT, SIRSI_LOGIN_TYPE_PATRON, SIRSI_LOGIN_TYPE_STAFF, INNOVATION_LOGIN_BARCODE_WITH_PIN, INNOVATION_LOGIN_BARCODE_ONLY } = require('../helpers/constants');
 const { setSuccessResponse, setErrorResponse, setConnectionErrorResponse } = require('../services/api-handler');
 const ErrorConstant = require('../helpers/error-messages');
@@ -15,7 +15,7 @@ const log = new CustomLogger()
 
 module.exports.sirsiLogin = async (req, res, db, authProvider) => {
     try {
-        const { barcode, password, EasybookingRuleTest } = req.body;
+        const { barcode, password } = req.body;
         const { SirsiConfig } = authProvider;
         const { ClientId, AppId, ServerBaseURL, LoginType, Username, Password } = SirsiConfig;
         const resourceURL = `${ServerBaseURL}${SIRSI_RESOURCE_USER}`;
@@ -50,10 +50,10 @@ module.exports.sirsiLogin = async (req, res, db, authProvider) => {
             if(LoginType == INNOVATION_LOGIN_BARCODE_ONLY) {
                 const searchData = await searchPatron(resourceURL, barcode, AppId, ClientId, sessionToken);
                 const patronData = await getPatron(resourceURL, searchData.key, AppId, ClientId, sessionToken);
-                await getHashId(req, res, db, authProvider, patronData, EasybookingRuleTest);
+                await getHashId(req, res, db, authProvider, patronData);
             } else {
                 const patronData = await getPatron(resourceURL, patronKey, AppId, ClientId, sessionToken);
-                await getHashId(req, res, db, authProvider, patronData, EasybookingRuleTest);
+                await getHashId(req, res, db, authProvider, patronData);
             }
         })
         .catch(async (error) => {
@@ -148,11 +148,11 @@ const searchPatron = async (resourceURL, barcode, AppId, ClientId, sessionToken)
     });
 }
 
-const getHashId = async (req, res, db, authProviderConfig, patronDetails, EasybookingRuleTest) => {
+const getHashId = async (req, res, db, authProviderConfig, patronDetails) => {
     const { headers, body } = req;
     const { orgId, barcode } = body;
     const tier = headers.tier ? headers.tier : STANDARD_TIER;
-    const { Mappings, CustomerID, _id, AllowUserCreation } = authProviderConfig;
+    const { Mappings, CustomerID, _id } = authProviderConfig;
 
     const mappedData = await getFieldValues(Mappings, patronDetails.fields);
     log.info("mappedData====>", JSON.stringify(mappedData))
@@ -181,31 +181,14 @@ const getHashId = async (req, res, db, authProviderConfig, patronDetails, Easybo
     let idpGroupID = []
 
     if (Mappings['GroupName']) {
-        console.log("in if =>", EasybookingRuleTest);
         idpGroupID = await getGroupIds(db, mappedData.GroupName, authProviderConfig);
     } else {
-        console.log("in else =>", EasybookingRuleTest);
-        
-        idpGroupID = await getMatchingGroups(db, patronDetails?.fields, authProviderConfig, hashId, EasybookingRuleTest);   
+        idpGroupID = await getMatchingGroups(db, patronDetails?.fields, authProviderConfig);   
     }
     let defaultGroupId;
     if(!idpGroupID?.length) {
         defaultGroupId = await defaultGroupID(db, authProviderConfig)
     }
-
-    if (AllowUserCreation === false) {
-      mappedData.GroupID = idpGroupID?.length > 0 ? idpGroupID : defaultGroupId;
-      mappedData.Username = username
-      const userDetails = await processUserWithoutCreation({
-        db,
-        mappedData,
-        authProviderConfig,
-        hashId,
-        EasybookingRuleTest
-      });
-      return setSuccessResponse(userDetails, res);
-    }
-
     if (user) {
         log.info("user found ****", JSON.stringify(user))
         mappedData.GroupID = idpGroupID;
@@ -256,9 +239,7 @@ const getHashId = async (req, res, db, authProviderConfig, patronDetails, Easybo
         const quotaBalance = await assignUserBalance(db, groupID)
         _user.DebitBalance = 0;
         _user.GroupQuotas = quotaBalance;
-        if (EasybookingRuleTest !== true) {
-            await model.users.createUser(db, _user, orgId);
-        }
+        await model.users.createUser(db, _user, orgId);
     }
     return setSuccessResponse({ hashId: hashId }, res, req);
 }

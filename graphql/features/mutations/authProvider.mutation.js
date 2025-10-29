@@ -16,8 +16,6 @@ module.exports = {
             "ProviderName": "",
             "OrgID": "test",
             "TokenExpiry": 30,
-            IsActive: true,
-            AllowUserCreation: true,
             "DisplayOnPortal": false
         }
     },
@@ -57,7 +55,8 @@ module.exports = {
                 "ClientSecret": "test",
                 "AuthorizationEndpoint": "http://localhost:3000/dev/graphql"
               },
-              "AssociatedIdentityProvider": ""
+              "AssociatedIdentityProvider": "",
+              "IsActive": ""
             }
         }
     },
@@ -99,44 +98,6 @@ module.exports = {
         }
       }
     },
-    addAuthProviderWkp: {
-        query: `mutation addAuthProvider($addAuthProviderInput: AuthProviderInput) {
-             addAuthProvider(addAuthProviderInput: $addAuthProviderInput) {
-              IsActive
-              InternalLoginConfig {
-              PasswordLabel
-              UsernameLabel
-             }
-            }
-        }`,
-    variables: {
-        addAuthProviderInput: {
-          WkpConfig: {
-            ClientId: "123",
-            ClientSecret: "qwe",
-            PinLabelText: "901",
-            OcpApimSubscriptionKey: "key",
-            Scope: "ok",
-            TokenEndpoint: "qwerty.com",
-            WkpAuthEndpoint: "test"
-          },
-            CustomerID: "6765364af7e02f68c300c34c",
-            DefaultGroupID: "676bc5957923943f6181b7f0",
-            ProviderName: "wkp",
-            AuthProvider: "wkp",
-            Mappings: {
-              Account: "sbi",
-              CardNumber: "123",
-              FirstName: "Sppanya",
-              GroupName: "admin",
-              LastName: "Mishra",
-              Mobile: "234567",
-              PrimaryEmail: "sppanya.mishra+0555@tbsit360.com",
-              Username: "sappu"
-            }
-      }
-    }
-  },
     UpdateAuthProvider: {
       "operationName":"UpdateAuthProvider",
       query: `mutation UpdateAuthProvider($authProviderId: ID!, $updateAuthProviderInput: AuthProviderInput, $customerId: ID) {

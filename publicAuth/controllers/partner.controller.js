@@ -295,23 +295,11 @@ module.exports.validateUser = async (req, res) => {
           if (!isMatch) {
             return await setErrorResponse(null, ERROR.INVALID_USERNAME_OR_PASSWORD_KEY, res, req);
           }
-          const groupData = await db
-            .collection("Groups")
-            .find({ _id: { $in: user?.GroupID } })
-            .toArray();
-
-          user.Group = groupData?.map((group) => {
-            return {
-              _id: group._id,
-              GroupName: group.GroupName,
-              GroupType: group.GroupType,
-            };
-          });
       } else {
         if (providerType === "ldap") {
           body["username"] = userName;
           body["password"] = password;
-        } else if (providerType === "innovative" || providerType === "sip2") {
+        } else if (providerType === "innovative") {
           body["barcode"] = userName;
           body["pin"] = password;
         } else if (providerType === "sirsi" || providerType === "polaris") {
@@ -321,22 +309,31 @@ module.exports.validateUser = async (req, res) => {
           return await setErrorResponse(null, ERROR.INVALID_AUTH_PROVIDER, res, req);
         }
         const userAuthData = await getUserAuthData(basePath, body, customerData.Tier);
-        if (!userAuthData?.data || userAuthData?.status === 0) {
+        const hashId = userAuthData.data?.hashId || userAuthData.data?.HashID
+        if (!hashId) {
           return await setErrorResponse(null, ERROR.INVALID_USER, res, req);
         }
-        user = userAuthData.data;
+        user = await models.users.findUserByHashId(db, hashId, customerData.DomainName)
+        if (!user) {
+          return await setErrorResponse(null, ERROR.UNAUTHORIZED, res, req);
+        }
       }
-
+      const groupData = await db.collection('Groups').find({ _id: { $in: user?.GroupID }}).toArray()
+      const groups = groupData?.map((group) => {
+        return {
+          _id: group._id,
+          GroupName: group.GroupName,
+          GroupType: group.GroupType,
+        };
+      });
       const response = {
-        CustomerID: user?.CustomerID || null,
-        TenantDomain: user?.TenantDomain || null,
         Username: user.Username || null,
         FirstName: user.FirstName || null,
         LastName: user.LastName || null,
-        PrimaryEmail: user.PrimaryEmail || null,
-        Mobile: user.Mobile || null,
+        email: user.PrimaryEmail || null,
+        mobile: user.Mobile || null,
         CardNumber: user.CardNumber || null,
-        Group: user.Group,
+        Group: groups
       };
       return await setSuccessResponse(response, res)
     }

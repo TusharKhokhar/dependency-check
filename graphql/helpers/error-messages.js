@@ -1,7 +1,5 @@
 module.exports = {
   DATABASE_ERROR: 'Database error or something went wrong',
-  AUTH_PROVIDER_NOT_CONFIGURED: "Auth provider is not configured",
-  INVALID_AUTH_PROVIDER: "Oops! Given identity provider is not supported by this API",
   USER_NOT_FOUND: "User not found",
   USERNAME_IS_REQUIRED: "Missing parameter - username",
   CUSTOMER_NOT_FOUND: 'Customer not found',

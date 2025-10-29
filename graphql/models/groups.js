@@ -1,9 +1,5 @@
 const Promise = require('bluebird')
-const { Groups: GroupsCollection  } = require('../models/collections')
 const { getObjectId: ObjectId } = require('../helpers/objectIdConverter')
-const CustomLogger = require("../helpers/customLogger");
-const { utcDateGet } = require('../helpers/util');
-const log = new CustomLogger()
 
 // Groups Model
 const Groups = {}
@@ -12,7 +8,7 @@ const Groups = {}
  * Method to get all groupInformation
  */
 
-Groups.getGroupsInformation = ({ status, pattern, sort, pageNumber, limit, sortKey, customerIds, collection, groupTypes }) => {
+Groups.getGroupsInformation = ({ status, pattern, sort, pageNumber, limit, sortKey, customerIds, collection }) => {
   return new Promise((resolve, reject) => {
     const condition = { IsDeleted: false }
     const searchCondition = {}
@@ -25,11 +21,6 @@ Groups.getGroupsInformation = ({ status, pattern, sort, pageNumber, limit, sortK
       })
       Object.assign(condition, { CustomerID: { $in: customerIds } })
     }
-    
-    if (groupTypes && groupTypes?.length > 0) {
-      Object.assign(condition, { GroupType: { $in: groupTypes } })
-    }
-    
     if (pattern) {
       Object.assign(searchCondition, {
         $or: [
@@ -121,55 +112,5 @@ Groups.getGroupsInformation = ({ status, pattern, sort, pageNumber, limit, sortK
     })
   })
 }
-
-Groups.reArrangeEasyBookingPriorities = async (
-  groupId,
-  db,
-  customerId,
-  context
-) => {
-  try {
-    const groupToDelete = await db
-      .collection(GroupsCollection)
-      .findOne({ _id: ObjectId.createFromHexString(groupId) });
-
-    if (
-      groupToDelete &&
-      groupToDelete.GroupType === "EasyBooking" &&
-      groupToDelete.Priority
-    ) {
-      // Find all EasyBooking groups with priority greater than the deleted group's priority
-      const groupsToUpdate = await db
-        .collection(GroupsCollection)
-        .find({
-          CustomerID: ObjectId.createFromHexString(customerId),
-          GroupType: "EasyBooking",
-          Priority: { $gt: groupToDelete.Priority },
-          IsDeleted: false,
-        })
-        .toArray();
-
-      if (groupsToUpdate.length > 0) {
-        // Create bulk operations to reduce priority by 1 for each group
-        const bulkOperations = groupsToUpdate.map((group) => ({
-          updateOne: {
-            filter: { _id: group._id },
-            update: {
-              $set: {
-                Priority: group.Priority - 1,
-                UpdatedBy: ObjectId.createFromHexString(context.data._id),
-                UpdatedAt: utcDateGet(),
-              },
-            },
-          },
-        }));
-        await db.collection(GroupsCollection).bulkWrite(bulkOperations);
-      }
-    }
-  } catch (error) {
-    log.error("error in reArrangeEasyBookingPriorities =>>>", error);
-    throw new Error(error.message);
-  }
-};
 // Export Groups model
 module.exports = Groups

@@ -13,25 +13,27 @@ let response;
 let requestBody = {};
 let groupIdFromAssignmentRule;
 
-const easyBookingGroupRules = {
-  Priority: 1,
-  Description: "Group assignment rules for Polaris login",
-  EnableSessionSettings: false,
-  EasyBookingGroups: [
-    {
-      EasyBookingGroupName: "Test Polaris Users Assignment",
-      IsActive: true,
-      Conditions: [
-        {
-          Field: "Barcode",
-          Condition: "equal",
-          Value: ["11223344"],
-          SingleMatch: true,
-        },
-      ],
-    },
-  ],
-};
+const groupAssignmentRules = [
+  {
+    SubGroups: [
+      {
+        Rules: [
+          {
+            Field: "Barcode",
+            Match: "single",
+            Condition: "equal_to",
+            Value: "11223344",
+          },
+        ],
+        Name: "Test Polaris Users",
+        Active: true,
+      },
+    ],
+    Priority: 1,
+    GroupName: "Test Polaris Users",
+    Enabled: true,
+  },
+];
 
 Before('@PolarisLogin', async () => {
   response = null;
@@ -91,15 +93,12 @@ const modifyConfig = async (modification) => {
     case "with invalid PAPIAccessKey":
       updateObj.PolarisConfig.PAPIAccessKey = "Test";
       break;
-    case "configured EasyBookingGroup":
+    case "configured GroupAssignmentRules":
       const { insertedId: groupId } = await addPermissionGroup(config.customerId, config.roleId)
-      await updateGroup(groupId, { 
-        GroupName: "Test Polaris Users",
-        GroupType: "EasyBooking",
-        EasyBooking: easyBookingGroupRules 
-      })
+      await updateGroup(groupId, { GroupName: "Test Polaris Users" })
       groupIdFromAssignmentRule = groupId
       updateObj.Mappings['GroupName'] = ""
+      updateObj.GroupAssignmentRules = groupAssignmentRules;
       break;
     default:
       break;
@@ -132,9 +131,9 @@ Given(
 );
 
 Given(
-  "an EasyBooking group is created with specific matching conditions for Polaris login",
+  "an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'Test Users' with specific matching conditions in Polaris login",
   async function () {
-    await modifyConfig("configured EasyBookingGroup");
+    await modifyConfig("configured GroupAssignmentRules");
   }
 );
 
@@ -183,8 +182,8 @@ Then("The response should contain hashId for Polaris login", function () {
 });
 
 Then(
-  "The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules for Polaris login",
-  async function () {
+  "The user should be assigned to the {string} if rules matches for this group in Polaris login",
+  async function (groupName) {
     const parsedResponse = JSON.parse(response.text);
     const { GroupID: userAssignedGroupId } = await findUserByHashId(
       parsedResponse.data.HashID,
@@ -199,42 +198,4 @@ Then(
 Then("The error should stored in AuditLogs collection for for Polaris login",async function () {
   const polarisLoginAuditLogs = await getAuditLogsByType("PolarisLogin")
   expect(polarisLoginAuditLogs.length).to.be.greaterThan(0)
-});
-
-Given('a valid Polaris auth provider config with AllowUserCreation set to true', async function () {
-  const updateObj = {
-    AllowUserCreation: true,
-  };
-  await updateAuthProvider(updateObj, config.polarisData._id);
-});
-
-Given('a valid Polaris auth provider config with AllowUserCreation set to false', async function () {
-  const updateObj = {
-    AllowUserCreation: false,
-  };
-  await updateAuthProvider(updateObj, config.polarisData._id);
-});
-
-Then('the system should create or update the user and return a hashId for Polaris login', function () {
-  expect(response.statusCode).to.equal(200);
-  const parsedResponse = JSON.parse(response.text);
-  expect(parsedResponse).to.have.property('error', null);
-  expect(parsedResponse).to.have.property('data').that.is.an('object');
-  expect(parsedResponse.data).to.have.property('hashId').that.is.a('string');
-});
-
-Then('the system should process the request without creating or updating the user and return the validated user response for Polaris', function () {
-  expect(response.statusCode).to.equal(200);
-  const parsedResponse = JSON.parse(response.text);
-  expect(parsedResponse).to.have.property('error', null);
-  expect(parsedResponse).to.have.property('data').that.is.an('object');
-  expect(parsedResponse.data).to.have.property('CustomerID');
-  expect(parsedResponse.data).to.have.property('TenantDomain');
-  expect(parsedResponse.data).to.have.property('PrimaryEmail');
-  expect(parsedResponse.data).to.have.property('Username');
-  expect(parsedResponse.data).to.have.property('Group');
-  expect(parsedResponse.data).to.have.property('FirstName');
-  expect(parsedResponse.data).to.have.property('LastName');
-  expect(parsedResponse.data).to.have.property('CardNumber');
-  expect(parsedResponse.data).to.have.property('Mobile');
 });

@@ -694,20 +694,6 @@ Resources:
       Role: !GetAtt 'LambdaRoleForConvFunctions.Arn'
       Timeout: 900
 
-
-  PubFileContainerizedLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code:
-        ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/libreoffice:latest'
-      Architectures:
-        - x86_64
-      Description: 'Containerized lambda used for .pub file conversion'
-      MemorySize: 10000
-      PackageType: 'Image'
-      Role: !GetAtt 'LambdaRoleForConvFunctions.Arn'
-      Timeout: 900
-
   PythonImageLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -755,15 +741,6 @@ Resources:
       Principal: "logs.amazonaws.com"
       SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${PythonImageLambda}:*'
 
-
-  PermissionForEventsToInvokeLambdaPubFile:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref ErrorLogsConversionFunction
-      Action: "lambda:InvokeFunction"
-      Principal: "logs.amazonaws.com"
-      SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${PubFileContainerizedLambda}:*'
-
   PermissionForEventsToInvokeLambdaContainer:
     Type: AWS::Lambda::Permission
     Properties:
@@ -782,28 +759,6 @@ Resources:
           - ''
           - - "/aws/lambda/"
             - Ref: PythonImageLambda
-      FilterPattern: "Error Processing File"
-
-
-  PubFileContainerizedLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${PubFileContainerizedLambda}'
-      RetentionInDays: 30
-
-
-  SubscriptionFilterPubFile:
-    Type: AWS::Logs::SubscriptionFilter
-    DependsOn:
-      - PermissionForEventsToInvokeLambdaPubFile
-      - PubFileContainerizedLambdaLogGroup
-    Properties:
-      DestinationArn: !GetAtt ErrorLogsConversionFunction.Arn
-      LogGroupName:
-        Fn::Join:
-          - ''
-          - - "/aws/lambda/"
-            - Ref: PubFileContainerizedLambda
       FilterPattern: "Error Processing File"
 
   SubscriptionFilter2:
@@ -909,6 +864,7 @@ Resources:
             - ".pdf"
             - ".svg"
             - ".epub"
+            - ".pub"
             - ".vsd"
             - ".xps"
             - ".oxps"
@@ -927,27 +883,6 @@ Resources:
             - ContainerizedLambda
             - Arn
           Id: Id20
-
-
-  PubFileRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: ".pub file conversion"
-      EventBusName: !GetAtt Fileprocess.Name
-      EventPattern:
-        detail-type:
-          - S3PutEventTrigger
-        source:
-          - my-custom-event
-        detail:
-          File_extension:
-            - ".pub"
-      Name: PubFileConversion
-      Targets:
-        - Arn: !GetAtt
-            - PubFileContainerizedLambda
-            - Arn
-          Id: Id22
 
   ImageRules:
     Type: AWS::Events::Rule
@@ -969,7 +904,6 @@ Resources:
             - ".bmp"
             - ".tif"
             - ".tiff"
-            - ".heif"
       Name: ImageConversion
       Targets:
         - Arn: !GetAtt
@@ -984,14 +918,6 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt AsposeTotalRule.Arn
-
-  EventBridgeLambdaPermissionPubFile:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt PubFileContainerizedLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt PubFileRule.Arn
 
   EventBridgeLambdaPermissionImageConversion:
     Type: AWS::Lambda::Permission

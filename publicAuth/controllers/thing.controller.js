@@ -256,12 +256,13 @@ module.exports.getThingCertificates = async (req, res) => {
     } else {
       const decryptedPrivateKey = await decryptIoTCertificate(thingData.PrimaryRegion.EncryptedPrivateKey)
       const certData = await fetchCertificatesById(certId, config.region, accessParams)
+      const endPoint = await retrieveEndpoint(config.region, accessParams)
       const rootCa = fs.readFileSync('./amazonCerts/AmazonRootCA1.pem').toString()
       await setSuccessResponse({
         PrivateKey: decryptedPrivateKey,
         Certificate: certData.certificateDescription.certificatePem,
         RootCa: rootCa,
-        Endpoint: `iot.${domainName}`,
+        Endpoint: endPoint,
         GlobalEndpoint: `iot.${domainName}`
       }, res, req)
     }
@@ -343,13 +344,13 @@ const fetchAllData = async (customerId, thingId, locationId, db, commonDb, versi
       {BarCode: 1, Pin: 1, BarCodeLabelText: 1, PinLabelText: 1, LoginType: 1}, SirsiConfig:
       {BarCodeLabelText: 1, PinLabelText: 1, LoginType: 1}, PolarisConfig:
       {BarCodeLabelText: 1, PinLabelText: 1, LoginType: 1}, LdapConfig:
-      {UsernameLabelText: 1, PasswordLabelText: 1}, InternalLoginConfig: {UsernameLabel: 1, PasswordLabel: 1}, WkpConfig: {PinLabelText:1}}).toArray() :
+      {UsernameLabelText: 1, PasswordLabelText: 1}, InternalLoginConfig: {UsernameLabel: 1, PasswordLabel: 1}}).toArray() :
     await authProviderCollection.find({CustomerID: customerData._id, IsDeleted: false, IsActive: true},
     ).project({OrgID: 1, AuthProvider: 1, CustomerID: 1, ProviderName: 1, LabelText: 1, InnovativeConfig:
         {BarCode: 1, Pin: 1, BarCodeLabelText: 1, PinLabelText: 1, LoginType: 1}, SirsiConfig:
         {BarCodeLabelText: 1, PinLabelText: 1, LoginType: 1}, PolarisConfig:
         {BarCodeLabelText: 1, PinLabelText: 1, LoginType: 1}, LdapConfig:
-        {UsernameLabelText: 1, PasswordLabelText: 1}, InternalLoginConfig: {UsernameLabel: 1, PasswordLabel: 1}, WkpConfig: {PinLabelText:1}}).toArray()
+        {UsernameLabelText: 1, PasswordLabelText: 1}, InternalLoginConfig: {UsernameLabel: 1, PasswordLabel: 1}}).toArray()
   const licenseData = customerData ? await licenseCollection.findOne({ CustomerID: customerId, IsDeleted: false }, {RegisteredTo: 1}): {}
   const customizationTextData = customerData ? await customizationTextCollection.findOne({ CustomerID: customerId }) : {}
   console.log('***********',customizationTextData.MainSection);

@@ -57,7 +57,6 @@ const typeDef = `#graphql
         updateVersion(updateVersionInput: VersionInput, versionId: ID!): Response
         versionDeleted(IsDeleted: Boolean, versionId: ID, customerId: ID): Response
         uploadVersion(versionUploadInput: VersionAttributes): UploadVersionSchema
-        uploadVersionV2(versionUploadInput: VersionAttributes): UploadVersionSchema
     }
 
     extend type Query {

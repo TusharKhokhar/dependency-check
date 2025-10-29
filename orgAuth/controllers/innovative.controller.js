@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const model = require('../models/index')
 const ERROR = require('../helpers/error-keys')
 const { getDb, isolatedDatabase } = require("../config/db");
-const { generateCode, assignUserBalance, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, findOrCreateAccount, defaultGroupID, processUserWithoutCreation } = require('../helpers/utils');
+const { generateCode, assignUserBalance, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, findOrCreateAccount, defaultGroupID } = require('../helpers/utils');
 const { STANDARD_TIER, INNOVATION_SERVER_PATH, INNOVATION_LOGIN_BARCODE_ONLY, INNOVATION_LOGIN_BARCODE_WITH_PIN } = require('../helpers/constants');
 const { setSuccessResponse, setErrorResponse, setConnectionErrorResponse } = require('../services/api-handler');
 const { isConnectionError, connectionErrorCodes } = require('../helpers/connectionError');
@@ -179,7 +179,7 @@ const getHashId = async (req, res, db, authProviderConfig, patronDetails) => {
     const { headers, body } = req;
     const { orgId, barcode } = body;
     const tier = headers.tier ? headers.tier : STANDARD_TIER;
-    const { Mappings, CustomerID, _id, AllowUserCreation } = authProviderConfig;
+    const { Mappings, CustomerID, _id } = authProviderConfig;
     log.info("Mappings====>", Mappings);
 
     const mappedData = await getFieldValues(Mappings, patronDetails);
@@ -213,18 +213,6 @@ const getHashId = async (req, res, db, authProviderConfig, patronDetails) => {
     if(!idpGroupID?.length) {
         defaultGroupId = await defaultGroupID(db, authProviderConfig)
     }
-    
-    if (AllowUserCreation === false) {
-      mappedData.GroupID = idpGroupID?.length > 0 ? idpGroupID : defaultGroupId;
-      mappedData.Username = username;
-      const userDetails = await processUserWithoutCreation({
-        db,
-        mappedData,
-        authProviderConfig,
-      });
-      return setSuccessResponse(userDetails, res);
-    }
-
     const user = await model.users.findUserByUserName(db, username, orgId, _id)
     const hashId = generateCode(64);
     if (user) {

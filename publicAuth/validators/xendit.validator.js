@@ -48,7 +48,7 @@ module.exports.xenditValidator = async (req, res, next) => {
       Email: email,
       Amount: Number(amount),
       Currency: currency,
-      Status: status === "PAID" ? "succeeded" : "failed",
+      Status: status,
       PaymentMethod: XENDIT,
       ValueAddedMethod: VALUE_ADDED_METHOD,
       TransactionStartTime: getUtcTime(surname),

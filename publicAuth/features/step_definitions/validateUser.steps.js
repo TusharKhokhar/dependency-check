@@ -111,7 +111,7 @@ Given(
         groupPermissionID
       );
       await updateAuthProvider(
-        { ProviderName: `${identityProvider}-test`,  AllowUserCreation: false},
+        { ProviderName: `${identityProvider}-test` },
         authData._id
       );
     }
@@ -170,13 +170,11 @@ Then("The response should contain {string}", function (expectedMessage) {
   const parsedResponse = JSON.parse(response.text);
   if (expectedMessage === "Success") {
     expect(parsedResponse).to.have.property("data");
-    expect(parsedResponse.data).to.have.property("CustomerID");
-    expect(parsedResponse.data).to.have.property("TenantDomain");
     expect(parsedResponse.data).to.have.property("Username");
     expect(parsedResponse.data).to.have.property("FirstName");
     expect(parsedResponse.data).to.have.property("LastName");
-    expect(parsedResponse.data).to.have.property("PrimaryEmail");
-    expect(parsedResponse.data).to.have.property("Mobile");
+    expect(parsedResponse.data).to.have.property("email");
+    expect(parsedResponse.data).to.have.property("mobile");
     expect(parsedResponse.data).to.have.property("CardNumber");
     expect(parsedResponse.data).to.have.property("Group");
   } else {

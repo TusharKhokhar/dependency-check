@@ -225,56 +225,5 @@ const deleteCredentials = async (data) => {
   }
 };
 
-/**
- * Generate signed URLs with guaranteed server-side encryption (V2)
- * This version ensures AES256 encryption is applied
- */
-const imageSignedUrlV2 = async (data) => {
-  try {
-    data.policy = await logoUploadPolicy(data);
-    const retrieveCredentials = await getStsCredentials(data.policy);
-    const newFileName = uuidv4();
-    const accessParams = {
-      accessKeyId: retrieveCredentials.Credentials.AccessKeyId,
-      secretAccessKey: retrieveCredentials.Credentials.SecretAccessKey,
-      sessionToken: retrieveCredentials.Credentials.SessionToken,
-    };
-
-    const s3Client = new S3Client({
-      region: AWS_REGION,
-      credentials: accessParams,
-    });
-
-    const signedParams = {
-      Bucket: S3_BUCKET,
-      Key: `PublicUploads/${data.customerId}/${newFileName}.${data.extension}`,
-      ContentType: data.contentType,
-      ServerSideEncryption: 'AES256', // Ensuring server-side encryption with AES256
-      Metadata: {
-        filename: data.fileName,
-        extension: data.extension,
-        customerId: data.customerId || '',
-        source: 'web',
-        customerDomain: data.domain,
-      },
-    };
-    const command = new PutObjectCommand(signedParams);
-    const signedUrl = await getSignedUrlCommand(s3Client, command, { expiresIn: 3600 });
-    return {
-      signedUrl,
-      expiryTime: 3600,
-      newFileName: `${newFileName}.pdf`,
-    };
-  } catch (error) {
-    return error;
-  }
-};
-
-module.exports = {
-  imageSignedUrl,
-  imageSignedUrlV2,
-  binarySignedUrl,
-  getSignedUrl,
-  accessKeysHead,
-  getBinaryFileSignedUrl
-};
+module.exports = { imageSignedUrl, getSignedUrl, accessKeysHead, deleteCredentials, getVersionSignedUrl,
+  binarySignedUrl, getBinaryFileSignedUrl };

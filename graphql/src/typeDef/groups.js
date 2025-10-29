@@ -1,14 +1,4 @@
 const typeDef = `#graphql
-
-    enum EasyBookingConditionType {
-        equal
-        not_equal
-        greater_than
-        less_than
-        between
-        starts_with
-    }
-
     type LMSRulesSchema {
         SubGroupName: String,
         Priority: Int,
@@ -145,25 +135,6 @@ const typeDef = `#graphql
         MaskFileNames: Boolean
     }
 
-    type EasyBookingSchema {
-        EnableSessionSettings: Boolean
-        EasyBookingGroups: [EasyBookingGroup]
-    }
-
-    type EasyBookingGroup {
-        EasyBookingGroupName: String
-        IsActive: Boolean
-        Conditions: [EasyBookingCondition]
-    }
-
-    type EasyBookingCondition {
-        Field: String!
-        Condition: EasyBookingConditionType!
-        Value: [String]
-        SingleMatch: Boolean
-    }
-
-
     type Group {
         _id: ID,
         Label: String,
@@ -180,8 +151,6 @@ const typeDef = `#graphql
         LMSRules: LMSRulesSchema,
         Policies: PoliciesSchema,
         Quota: QuotaSchema,
-        EasyBooking: EasyBookingSchema,
-        EasyBookingGroupID: ID,
         RulesID: [String],
         UserID: [String],
         CustomerData: CustomerDataSchema
@@ -242,30 +211,6 @@ const typeDef = `#graphql
         Device: String
     }
 
-    input EasyBookingGroupInput {
-        EasyBookingGroupName: String
-        IsActive: Boolean
-        Conditions: [EasyBookingConditionInput]
-    }
-
-    input EasyBookingInput {
-        EnableSessionSettings: Boolean
-        EasyBookingGroups: [EasyBookingGroupInput]
-    }
-
-    input TestBookingGroupRulesInput {
-        AuthID: String!
-        BarCode: String,
-        Pin: String
-    }
-
-    input EasyBookingConditionInput {
-        Field: String!
-        Condition: EasyBookingConditionType!
-        Value: [String]
-        SingleMatch: Boolean
-    }
-
     input GroupInput {
         Label: String,
         GroupName: String,
@@ -283,8 +228,6 @@ const typeDef = `#graphql
         PrintConfigurationGroupID: ID,
         Policies: PoliciesInput,
         Quota: QuotaInput,
-        EasyBooking: EasyBookingInput,
-        EasyBookingGroupID: ID,
         RulesID: [String],
         UserID: [String],
         PrintReview: Boolean,
@@ -304,17 +247,9 @@ const typeDef = `#graphql
         group: [Group],
         total: Int
     }
-    
-    scalar JSON
-
-    type TestBookingGroupRulesResponse {
-        message: String
-        statusCode: Int
-        data: JSON       
-    }
 
     extend type Query {
-        getGroups(paginationInput: PaginationData, customerIds: [ID], groupTypes: [String]): GroupsResponse
+        getGroups(paginationInput: PaginationData, customerIds: [ID]): GroupsResponse
         getGroup(groupId: ID, customerId: ID): Group
     }
 
@@ -325,9 +260,7 @@ const typeDef = `#graphql
         groupStatus(IsActive: Boolean, groupId: ID, customerId: ID): Response
         "Reset quota balances of the users based on the parameters"
         resetQuotaBalance(amount: Float, groupId: ID, customerId: ID): Response
-        updateEasyBookingGroupPriorities(groupIds: [ID!]!, customerId: ID!): Response
-        testBookingGroupRules(testBookingGroupRulesInput: TestBookingGroupRulesInput, customerId: ID!, ): TestBookingGroupRulesResponse
     }
 `
-// data: JSON
+
 module.exports = typeDef

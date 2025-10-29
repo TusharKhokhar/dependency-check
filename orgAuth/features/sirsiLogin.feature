@@ -43,10 +43,10 @@ Feature: Login with Sirsi
         Then The response status should be 200 in login with sirsi
         And The response should contain hashId in login with sirsi
 
-    Scenario: Assign user to a group based on matched EasyBooking group rules in Sirsi login
-        Given an EasyBooking group is created with specific matching conditions for Sirsi login
+    Scenario: Assign user to a group based on matched GroupAssignmentRules in Sirsi login
+        Given an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'Test Users' with specific matching conditions for Sirsi login
         When I send a POST request to login with sirsi
-        Then The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules for Sirsi login
+        Then The user should be assigned to the "Test Sirsi Users" if rules matches for this group for Sirsi login
 
     Scenario: User completes Sirsi SSO login
      Given one user already exists in the system - SirsiLogin

@@ -53,6 +53,7 @@ module.exports = {
       TokenExpiry: 10,
       CreatedBy: ObjectId.createFromHexString(createdBy),
       Sip2Config: null,
+      GroupAssignmentRules: null,
       DisplayOnPortal: true,
       CreatedAt: now,
       UpdatedAt: now,

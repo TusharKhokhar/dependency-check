@@ -45,7 +45,7 @@ Feature: Login with Innovative
         Then The response status should be 200 for Innovative login
         And The response should contain hashId for Innovative login
 
-    Scenario: Assign user to a group based on matched EasyBooking group rules in Innovative login
-        Given an EasyBooking group is created with specific matching conditions for Innovative login
+    Scenario: Assign user to a group based on matched GroupAssignmentRules
+        Given an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'Test Users' with specific matching conditions for Innovative login
         When I send a POST request for Innovative login
-        Then The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules for Innovative login
+        Then The user should be assigned to the "Test Innovative Users" if rules matches for this group for Innovative login

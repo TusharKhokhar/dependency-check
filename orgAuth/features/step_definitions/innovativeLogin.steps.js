@@ -13,25 +13,27 @@ let response;
 let requestBody = {};
 let groupIdFromAssignmentRule;
 
-const easyBookingGroupRules = {
-  Priority: 1,
-  Description: "Group assignment rules for Innovative login",
-  EnableSessionSettings: false,
-  EasyBookingGroups: [
-    {
-      EasyBookingGroupName: "Test Users Assignment",
-      IsActive: true,
-      Conditions: [
-        {
-          Field: "institutionId",
-          Condition: "equal",
-          Value: ["TBS"],
-          SingleMatch: true,
-        },
-      ],
-    },
-  ],
-};
+const groupAssignmentRules = [
+  {
+    SubGroups: [
+      {
+        Rules: [
+          {
+            Field: "barcodes",
+            Match: "single",
+            Condition: "equal_to",
+            Value: "1122334455",
+          },
+        ],
+        Name: "Test Innovative Users",
+        Active: true,
+      },
+    ],
+    Priority: 1,
+    GroupName: "Test Innovative Users",
+    Enabled: true,
+  },
+];
 
 Before('@InnovativeLogin', async () => {
   response = null;
@@ -86,15 +88,12 @@ const modifyConfig = async (modification) => {
     case "invalid ServerBaseURL":
       updateObj.InnovativeConfig.ServerBaseURL = "InvalidServerBaseURL";
       break;
-    case "configured EasyBookingGroup":
+    case "configured GroupAssignmentRules":
       const { insertedId: groupId } = await addPermissionGroup(config.customerId, config.roleId)
-      await updateGroup(groupId, { 
-        GroupName: "Test Innovative Users",
-        GroupType: "EasyBooking",
-        EasyBooking: easyBookingGroupRules 
-      })
+      await updateGroup(groupId, { GroupName: "Test Innovative Users" })
       groupIdFromAssignmentRule = groupId
       updateObj.Mappings['GroupName'] = ""
+      updateObj.GroupAssignmentRules = groupAssignmentRules;
       break;
     default:
       break;
@@ -120,9 +119,9 @@ Given(
 );
 
 Given(
-  "an EasyBooking group is created with specific matching conditions for Innovative login",
+  "an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'Test Users' with specific matching conditions for Innovative login",
   async function () {
-    await modifyConfig("configured EasyBookingGroup");
+    await modifyConfig("configured GroupAssignmentRules");
   }
 );
 
@@ -172,8 +171,8 @@ Then("The response should contain hashId for Innovative login", function () {
 
 
 Then(
-  "The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules for Innovative login",
-  async function () {
+  "The user should be assigned to the {string} if rules matches for this group for Innovative login",
+  async function (groupName) {
     const parsedResponse = JSON.parse(response.text);
     const { GroupID: userAssignedGroupId } = await findUserByHashId(
       parsedResponse.data.hashId,

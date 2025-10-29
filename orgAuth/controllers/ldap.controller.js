@@ -5,7 +5,7 @@ const ERROR = require('../helpers/error-keys');
 const model = require('../models/index');
 const { STANDARD_TIER } = require('../helpers/constants');
 const { setSuccessResponse, setErrorResponse, setConnectionErrorResponse } = require('../services/api-handler');
-const { generateCode, assignUserBalance, assignAuthProviderID, updateUser,findOrCreateAccount, parseCardNumbers, defaultGroupID, processUserWithoutCreation } = require("../helpers/utils");
+const { generateCode, assignUserBalance, assignAuthProviderID, updateUser,findOrCreateAccount, parseCardNumbers, defaultGroupID } = require("../helpers/utils");
 const {sendAuditLogs} = require("../helpers/auditLog");
 const { isConnectionError, connectionErrorCodes } = require('../helpers/connectionError');
 const CustomLogger = require("../helpers/customLogger");
@@ -49,7 +49,7 @@ module.exports.ldaplogin = async (req, res, db, authProvider) => {
         mappedData.CustomerID = authProvider.CustomerID;
         mappedData.Tier = tier;
         mappedData.TenantDomain = orgId;
-        const hashId = await getHashId(db, authProvider, mappedData, req, res);
+        const hashId = await getHashId(db, authProvider, mappedData, req);
         return setSuccessResponse({ hashId: hashId }, res, req)
     } catch (err) {
         log.error('catch err.........', err);
@@ -192,9 +192,9 @@ const getGroupIds = async (db, authProvider, mappedData) => {
     return [];
 }
 
-const getHashId = async (db, authProvider,  mappedData, req, res) => {
+const getHashId = async (db, authProvider,  mappedData, req) => {
     try {
-        const { _id, CustomerID, AllowUserCreation } = authProvider
+        const { _id, CustomerID } = authProvider
         const user = await model.users.findUserByUserName(db, mappedData.Username, mappedData.TenantDomain, _id);
         const hashId = generateCode(64);
         const idpGroupID = await getGroupIds(db, authProvider, mappedData);
@@ -203,18 +203,6 @@ const getHashId = async (db, authProvider,  mappedData, req, res) => {
             defaultGroupId = await defaultGroupID(db, authProvider, mappedData)
         }
         mappedData.GroupID = idpGroupID;
-
-        if (AllowUserCreation === false) {
-          mappedData.GroupID =
-            idpGroupID?.length > 0 ? idpGroupID : defaultGroupId;
-          const userDetails = await processUserWithoutCreation({
-            db,
-            mappedData,
-            authProviderConfig: authProvider,
-          });
-          return setSuccessResponse(userDetails, res);
-        }
-
         const accountIdFromIdpRes = mappedData.Account ? mappedData.Account : null;
         const accountId = await findOrCreateAccount({
           db,

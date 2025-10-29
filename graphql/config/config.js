@@ -57,6 +57,5 @@ module.exports = {
   staffRePrintPermission: '650b2ae95654c031937f4428',
   updateDebitBalance: '664624ee2f7feb818fa7f987',
   updateQuotaBalance: '664624e12f7feb818fa7f986',
-  ResetQuotaBalance: '65cd9634bfae1adbfdc8a637',
-  orgAuthBaseUrl: process.env.environment === 'test' ? envJson.ORGAUTH_BASE_URL : process.env.domainName ? `https://api.${process.env.domainName}`: `https://api.${envJson.DOMAINNAME}`
+  ResetQuotaBalance: '65cd9634bfae1adbfdc8a637'
 }

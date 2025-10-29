@@ -21,7 +21,6 @@ const log = new CustomLogger()
 const {decryptText} = require("../services/encryptDecrypt");
 const {securityInterceptor} = require("../helpers/securityCheck");
 const { rsaDecrypt } = require('../helpers/utils');
-const { wkpLogin } = require('./wkp.controller');
 
 
 module.exports.redirectLogin = async (req, res) => {
@@ -140,10 +139,7 @@ module.exports.loginHandler = async (req, res) => {
                     break;    
                 case 'sip2':
                     await sip2Login(req, res, db, decryptedIDPData)
-                    break; 
-                case 'wkp':
-                    await wkpLogin(req, res, db, decryptedIDPData)
-                    break;   
+                    break;    
             }
         }
     } catch (err) {

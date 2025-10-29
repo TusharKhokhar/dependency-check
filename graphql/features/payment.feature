@@ -16,13 +16,11 @@ Feature: Payment
     Given a valid input for CBORD PaymentType, ThingID, CustomerId, CardNumber, Amount, Device and Currency
     When the sendTransaction function is called for CBORD PaymentType
     Then a successful response with transaction details should be returned for CBORD PaymentType
-    Then the PaymentStats record in MongoDB should have status "succeeded"
 
   Scenario: Successful sendTransaction by Atrium
     Given a valid input for Atrium PaymentType, ThingID, CustomerId, CardNumber, Amount, Device and Currency
     When the sendTransaction function is called for Atrium PaymentType
     Then a successful response with transaction details should be returned for Atrium PaymentType
-    Then the PaymentStats record in MongoDB should have status "succeeded"
 
   Scenario: Failed getBalance retrieval with wrong CardNumber
     Given a valid input for getBalance PaymentType, ThingID, and CustomerId
@@ -46,9 +44,3 @@ Feature: Payment
     Given I have a valid payment input for iPay88
     When I send a request to add payment configuration for iPay88
     Then the response should return "Hash Created Successfully" with status code 200 and required payment fields
-
-@PortOne
-  Scenario: Successfully add a new payment PortOne
-  Given I have a valid payment input for PortOne
-  When I send a request to add payment configuration for PortOne
-  Then the response should have status code 200 and response should have PortOne details

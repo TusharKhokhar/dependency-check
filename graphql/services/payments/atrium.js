@@ -181,7 +181,7 @@ const sendAtriumTransaction = async (
         customerId: customerId,
         txId: transactionResponse?.txid || transactionResponse?.TransID,
         amount: amount?.total || amount,
-        status: transactionResponse.approved === 1 ? "succeeded" : "failed",
+        status: transactionResponse.approved === 1 ? "success" : "failed",
         paymentType: paymentType,
         terminalId,
         device: device,

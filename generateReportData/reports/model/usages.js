@@ -578,7 +578,7 @@ module.exports = {
         paperSize,
         duplex,
         customerIds,
-        locationIds,
+        locationId,
         documentType,
         dateFrom: startDate,
         dateTo: endDate,
@@ -590,18 +590,18 @@ module.exports = {
       );
       const condition = {
         TransactionDate: { $gte: dateFrom, $lte: dateTo },
-      };      
+      };
       if (Array.isArray(customerIds) && customerIds.length > 0) {
         const objectIds = customerIds.map((cus) =>
           ObjectId.createFromHexString(cus)
         );
         Object.assign(condition, { CustomerID: { $in: objectIds } });
       }
-      if (locationIds && locationIds.length > 0) {
-        const locationObjectIds = locationIds.map((loc) =>
+      if (locationId && locationId.length > 0) {
+        locationId = await locationId.map((loc) =>
           ObjectId.createFromHexString(loc)
         );
-        Object.assign(condition, { LocationID: { $in: locationObjectIds } });
+        Object.assign(condition, { LocationID: { $in: locationId } });
       }
       if (submissionType && submissionType.length > 0) {
         Object.assign(condition, {

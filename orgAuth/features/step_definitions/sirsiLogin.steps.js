@@ -16,25 +16,27 @@ let requestBody = {};
 let groupIdFromAssignmentRule;
 let userDetail;
 
-const easyBookingGroupRules = {
-  Priority: 1,
-  Description: "Group assignment rules for Sirsi login",
-  EnableSessionSettings: false,
-  EasyBookingGroups: [
-    {
-      EasyBookingGroupName: "Test Sirsi Users Assignment",
-      IsActive: true,
-      Conditions: [
-        {
-          Field: "barcode",
-          Condition: "equal",
-          Value: ["601001"],
-          SingleMatch: true,
-        },
-      ],
-    },
-  ],
-};
+const groupAssignmentRules = [
+  {
+    SubGroups: [
+      {
+        Rules: [
+          {
+            Field: "barcode",
+            Match: "single",
+            Condition: "equal_to",
+            Value: "601001",
+          },
+        ],
+        Name: "Test Sirsi Users",
+        Active: true,
+      },
+    ],
+    Priority: 1,
+    GroupName: "Test Sirsi Users",
+    Enabled: true,
+  },
+];
 
 Before('@SirsiLogin', async () => {
   response = null;
@@ -84,18 +86,15 @@ const modifyConfig = async (modification) => {
     case "invalid ServerBaseURL":
       updateObj.SirsiConfig.ServerBaseURL = "InvalidServerBaseURL";
       break;
-    case "configured EasyBookingGroup":
+    case "configured GroupAssignmentRules":
       const { insertedId: groupId } = await addPermissionGroup(
         config.customerId,
         config.roleId
       );
-      await updateGroup(groupId, { 
-        GroupName: "Test Sirsi Users",
-        GroupType: "EasyBooking",
-        EasyBooking: easyBookingGroupRules 
-      });
+      await updateGroup(groupId, { GroupName: "Test Sirsi Users" });
       groupIdFromAssignmentRule = groupId;
       updateObj.Mappings["GroupName"] = "";
+      updateObj.GroupAssignmentRules = groupAssignmentRules;
       break;
     default:
       break;
@@ -123,9 +122,9 @@ Given(
 );
 
 Given(
-  "an EasyBooking group is created with specific matching conditions for Sirsi login",
+  "an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'Test Users' with specific matching conditions for Sirsi login",
   async function () {
-    await modifyConfig("configured EasyBookingGroup");
+    await modifyConfig("configured GroupAssignmentRules");
   }
 );
 
@@ -176,8 +175,8 @@ Then("The response should contain hashId in login with sirsi", function () {
 });
 
 Then(
-  "The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules for Sirsi login",
-  async function () {
+  "The user should be assigned to the {string} if rules matches for this group for Sirsi login",
+  async function (groupName) {
     const parsedResponse = JSON.parse(response.text);
     const { GroupID: userAssignedGroupId } = await findUserByHashId(
       parsedResponse.data.hashId,

@@ -44,18 +44,7 @@ Feature: Login with Sip2
         When I send a POST request to login with sip2
         Then The HTTP response status should be 200 and the response should contain hashId in login with sip2
 
-    Scenario: Assign user to a group based on matched EasyBooking group rules in SIP2 login
-        Given an EasyBooking group is created with specific matching conditions for SIP2 login
+    Scenario: Assign user to a group based on matched GroupAssignmentRules in SIP2 login
+        Given an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'TBS Users' with specific matching conditions in SIP2 login
         When I send a POST request to login with sip2
-        Then The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules
-
-    Scenario: Handle user login when AllowUserCreation is enabled
-        Given a valid SIP2 auth provider config with AllowUserCreation set to true
-        When I send a POST request to login with sip2
-        Then the system should create or update the user and return a hashId for SIP2 login
-    
-    Scenario: Handle user login when AllowUserCreation is disabled
-        Given a valid SIP2 auth provider config with AllowUserCreation set to false
-        When I send a POST request to login with sip2
-        Then the system should process the request without creating or updating the user and return the validated user response for sip2
-    
+        Then The user should be assigned to the "TBS Users" if rules matches for this group in SIP2 login

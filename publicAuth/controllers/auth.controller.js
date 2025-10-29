@@ -664,9 +664,6 @@ const getAuthProviderData = async (customerData, authProviderCollection, display
       BarCodeLabelText: 1,
       PinLabelText: 1,
     },
-    WkpConfig: {
-      PinLabelText: 1,
-    }
   };
 
 

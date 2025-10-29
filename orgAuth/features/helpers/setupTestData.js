@@ -31,14 +31,6 @@ async function setupTestData() {
   );
   const sip2LoginCreds = await getAuthProviderLoginCredentials("sip2");
 
-  const wkpData = await addProvider(
-    customerId,
-    "wkp",
-    orgID,
-    groupPermissionId
-  );
-  const wkpLoginCreds = await getAuthProviderLoginCredentials("wkp");
-
   /** Adding sirsi auth provider */
   const sirsiData = await addProvider(
     customerId,
@@ -120,8 +112,6 @@ async function setupTestData() {
   config.orgID = orgID;
   config.sip2Data = sip2Data;
   config.sip2LoginCreds = sip2LoginCreds;
-  config.wkpData = wkpData;
-  config.wkpLoginCreds = wkpLoginCreds;
   config.sirsiData = sirsiData;
   config.sirsiLoginCreds = sirsiLoginCreds;
   config.ldapData = ldapData;

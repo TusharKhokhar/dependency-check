@@ -77,12 +77,7 @@ const validateAndInsertThing = async (addThingInput, CustomerID) => {
     SupportedIdentityProviderID: SupportedIdentityProviderID,
     Tags: Tags && Tags!== '' ? Tags?.split(',') : []
   };
-  if (Number.isNaN(newThing?.TimeOut)) {
-    newThing.TimeOut = 60
-  } 
-  if (Number.isNaN(newThing?.ClearLogsAfter)) {
-    newThing.ClearLogsAfter = 7
-  }
+
   newThing = addCreateTimeStamp(newThing);
   try {
     const validateThing = await db.collection("Things").findOne({
@@ -304,20 +299,14 @@ const loginOptionValidationAndFormatData = async (data, db, customerId) => {
         data?.LoginOptionIdentityProviderThree,
         data?.LoginOptionIdentityProviderFour
       ]} }).toArray()
-  if (data?.LoginOptionIdentityProvider?.toLowerCase() === 'true' && identityProviders?.length === 0 &&
+  if (identityProviders?.length === 0 &&
     data?.LoginOptionIdentityProviderOne) {
     throw new Error('Identity Providers not found')
   }
-  identityProviders = identityProviders?.map((obj) => obj._id) || []
-  let identityProvidersExternal = {};
-  if (data?.ExternalCardValidation?.toLowerCase() === 'true') {
-    identityProvidersExternal = await db.collection('AuthProviders').findOne({
-      CustomerID: customerId,
-      IsDeleted: false,
-      ProviderName: data?.ExternalCardIdpName
-    });
-  }
-  if (data?.ExternalCardValidation?.toLowerCase() === 'true' && Object.keys(identityProvidersExternal).length === 0) {
+  identityProviders = identityProviders.map((obj) => obj._id)
+  const identityProvidersExternal = await db.collection('AuthProviders').findOne({CustomerID: customerId, IsDeleted: false,
+    ProviderName: data?.ExternalCardIdpName })
+  if (data?.ExternalCardIdpName && !identityProvidersExternal) {
     throw new Error('External Card Identity Provider not found')
   }
   if (data?.LoginOptionReleaseCode.toLowerCase() === 'true') {

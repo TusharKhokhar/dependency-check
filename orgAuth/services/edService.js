@@ -59,11 +59,6 @@ module.exports = {
             data.ExternalCardValidationConfig.ClientSecret = data?.ExternalCardValidationConfig?.ClientSecret ? await encryptText(data.ExternalCardValidationConfig.ClientSecret) : null
             return data
         }
-        if (data.AuthProvider === 'wkp') {
-            data.WkpConfig.ClientId = data?.WkpConfig?.ClientId ? await encryptText(data.WkpConfig.ClientId) : null
-            data.WkpConfig.ClientSecret = data?.WkpConfig?.ClientSecret ? await encryptText(data.WkpConfig.ClientSecret) : null
-            return data
-        }
         return data
         } catch (error) {
             log.error("Error in performEncryption:", error)
@@ -123,11 +118,6 @@ module.exports = {
             if (data.AuthProvider === 'externalCardValidation') {
                 data.ExternalCardValidationConfig.ClientId = data?.ExternalCardValidationConfig?.ClientId ? await decryptText(data.ExternalCardValidationConfig.ClientId) : null
                 data.ExternalCardValidationConfig.ClientSecret = data?.ExternalCardValidationConfig?.ClientSecret ? await decryptText(data.ExternalCardValidationConfig.ClientSecret) : null
-                return data
-            }
-            if (data.AuthProvider === 'wkp') {
-                data.WkpConfig.ClientId = data?.WkpConfig?.ClientId ? await decryptText(data.WkpConfig.ClientId) : null
-                data.WkpConfig.ClientSecret = data?.WkpConfig?.ClientSecret ? await decryptText(data.WkpConfig.ClientSecret) : null
                 return data
             }
         } catch (error) {

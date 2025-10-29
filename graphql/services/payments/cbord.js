@@ -222,7 +222,7 @@ const cbordAckChargeAccount = async (
         txId: transID,
         amount: tranAmount?.total || tranAmount,
         status: csGoldMessage?.HostMessage?.toLowerCase().includes("success")
-          ? "succeeded"
+          ? "success"
           : "failed",
         paymentType: paymentType,
         terminalId: null,

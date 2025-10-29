@@ -134,66 +134,6 @@ const uploadMultipleFiles = async (data, customerId, path, context) => {
   }
 }
 
-const uploadMultipleFilesV2 = async (data, customerId, path, context) => {
-  try {
-    if (path.includes('Import')) {
-      path = path.includes('Device') ? 'Import/devices' : path.includes('Location') ? 'Import/locations' : path.includes('Account') ? 'Import/accounts' : 'Import/things'
-    }
-    data.policy = await fileUploadPolicy(data, customerId, path)
-    const retrieveCredentials = await getStsCredentials(data)
-    const accessParams = {
-      accessKeyId: retrieveCredentials.Credentials.AccessKeyId,
-      secretAccessKey: retrieveCredentials.Credentials.SecretAccessKey,
-      sessionToken: retrieveCredentials.Credentials.SessionToken
-    }
-    let signedUrls = []
-    for (let metaData of data) {
-      const uuidName = path.includes('Import') ? context?.data?._id : uuidv4()
-      const signedParams = {
-        Bucket: S3_BUCKET,
-        Key: `${path}/${customerId}/${uuidName}.${metaData.extension}`,
-        ContentType: metaData.contentType,
-        ServerSideEncryption: 'AES256'
-      }
-      const s3Client = new S3Client({
-        region: AWS_REGION,
-        credentials: {
-          accessKeyId: accessParams.accessKeyId,
-          secretAccessKey: accessParams.secretAccessKey,
-          sessionToken: accessParams.sessionToken
-        },
-      });
-      const command = new PutObjectCommand(signedParams);
-      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-      signedParams.Fields = {
-        "x-amz-server-side-encryption": "AES256", // Include AES256 encryption header
-      }
-      signedParams.Conditions = [
-        { "x-amz-server-side-encryption": "AES256" }, // Enforce AES256 in the policy
-      ]
-
-      const postSignedMeta = await createPresignedPost(s3Client, signedParams)
-      signedUrls.push({
-        originalFileName: metaData.fileName,
-        newFileName: `${uuidName}.${metaData.extension}`,
-        signedUrl,
-        postSignedMeta: JSON.stringify(postSignedMeta),
-        expiryTime: 3600
-      } )
-    }
-    if (path.includes('TranslationService')) {
-      // signed url api logic to store entries in DB
-      const db = await getDb()
-      const id = await generateLinksPromise(signedUrls, customerId, db)
-      return {signedUrls, id}
-    }
-    return {signedUrls}
-  } catch (error) {
-    console.error(error)
-    return error
-  }
-}
-
 const generateLinksPromise = async (data, customerId, db) => {
   const arrayOfPostData = []
   for (const upload of data) {
@@ -219,42 +159,6 @@ const kioskVersionUpload = async (data) => {
       Bucket: S3_BUCKET,
       Key: `Versions/${data.fileName}.${data.extension}`,
       ContentType: data.contentType
-    }
-    const s3Client = new S3Client({
-      region: AWS_REGION,
-      credentials: {
-        accessKeyId: accessParams.accessKeyId,
-        secretAccessKey: accessParams.secretAccessKey,
-        sessionToken: accessParams.sessionToken
-      },
-    });
-    const command = new PutObjectCommand(signedParams);
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    return {
-      signedUrl,
-      expiryTime: 3600,
-      path: signedParams.Key
-    }
-  } catch (error) {
-    console.log(error)
-    return error
-  }
-}
-
-const kioskVersionUploadV2 = async (data) => {
-  try {
-    data.policy = await versionUploadPolicy(data)
-    const retrieveCredentials = await getStsCredentials(data)
-    const accessParams = {
-      accessKeyId: retrieveCredentials.Credentials.AccessKeyId,
-      secretAccessKey: retrieveCredentials.Credentials.SecretAccessKey,
-      sessionToken: retrieveCredentials.Credentials.SessionToken
-    }
-    const signedParams = {
-      Bucket: S3_BUCKET,
-      Key: `Versions/${data.fileName}.${data.extension}`,
-      ContentType: data.contentType,
-      ServerSideEncryption: 'AES256'
     }
     const s3Client = new S3Client({
       region: AWS_REGION,
@@ -325,4 +229,4 @@ const getSignedUrlFile = async (data) => {
 }
 
 module.exports = { imageSignedUrl, uploadSignedUrl, deleteCredentials, getSignedUrlFile,
-  kioskVersionUpload, uploadMultipleFiles, uploadMultipleFilesV2, kioskVersionUploadV2 }
+  kioskVersionUpload, uploadMultipleFiles }

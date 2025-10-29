@@ -3,13 +3,15 @@ const {validateAndInsertDevice} = require("./controller/device.controller");
 const {validateAndInsertThing} = require("./controller/thing.controlller");
 const {formatLocation} = require("./controller/location.controller");
 const {validateAndInsertAccount} = require("./controller/account.controller");
+const ct = require("countries-and-timezones");
 
 const addLocations = async (locations, customerId) => {
     const db = await getDb();
     const failedLocations = [];
     const validLocations = [];
+    const countries = ct.getAllCountries();
     for (const location of locations) {
-        const formattedLocation = await formatLocation(location, customerId)
+        const formattedLocation = await formatLocation(location, customerId, countries)
         const existingLocation = await db.collection('Locations').findOne({ Location: location.Location,
             CustomerID: customerId, IsDeleted: false });
         if (existingLocation) {

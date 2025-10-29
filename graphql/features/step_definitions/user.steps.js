@@ -95,9 +95,6 @@ const {
   updateAudioStatus,
 } = require("../mutations/audio.mutation");
 const { getAudio } = require("../queries/audio");
-const {updateJobList} = require("../mutations/jobList.mutation");
-const {addJobList} = require("../../../memoryDb/jobList");
-const {addDropdowns} = require("../../../memoryDb/dropdowns");
 
 setDefaultTimeout(100000)
 
@@ -107,14 +104,12 @@ let context = {};
 
 BeforeAll(async () => {
     const {insertedId: customerId, ops: customerData} = await addCustomer()
-    const {insertedId: jobListId, ops: jobListData} = await addJobList()
     const {insertedId: roleId} = await addRole(customerId)
     const {insertedId: groupId, ops: groupData} = await addGroup(customerId)
     const {insertedId: quotaGroupId} = await addQuotaGroup(customerId)
     const {insertedId: licenseId} = await addLicense(customerId)
     const {insertedId: groupPermissionId} = await addPermissionGroup(customerId, roleId, "Apple")
     const {insertedId: groupPermissionId2} = await addPermissionGroup(customerId, roleId, "Z")
-    await addDropdowns()
     const {ops: userData} = await addUser([groupId, groupPermissionId], [
           {
               "GroupID" : quotaGroupId,
@@ -273,8 +268,6 @@ BeforeAll(async () => {
     getUserOverview.variables.customerId = customerId
     getUserOverview.variables.userId = userData[0]._id
     addCustomizationText.variables.addCustomizationTextInput.CustomerID = customerId
-    updateJobList.variables.updateJobListInput.CustomerID = customerId
-    updateJobList.variables.jobListId = jobListId
     //findDataExisting
     findDataExisting.variables.customerId = customerId
     

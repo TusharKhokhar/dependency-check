@@ -50,7 +50,7 @@ const {
 const resolvers = require('./src/resolvers')
 const { validateToken } = require('./services/token-interceptor')
 const { Stage } = require('./config/config')
-const { getFragmentOperation, toPascalCase, logGraphQLOperation } = require('./helpers/util')
+const { getFragmentOperation, toPascalCase } = require('./helpers/util')
 const depthLimit = require("graphql-depth-limit");
 
 // Performance optimization
@@ -117,8 +117,6 @@ app.use(
       const operationName = req.body?.query?.includes("fragment")
         ? getFragmentOperation(req.body?.query)
         : toPascalCase(req.body?.operationName);
-
-      logGraphQLOperation(operationName, apiKey, requesterDomain);
       
       const { error, data } = await validateToken({ token, apiKey, requesterDomain, tier })
       if (error) {

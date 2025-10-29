@@ -42,7 +42,7 @@ const {
   heartlandTransactionSchema,
   nayaxTransactionSchema,
   paymentSchema,
-  iPay88TransactionSchema,
+  pay88TransactionSchema,
 } = require('../../helpers/schema')
 const { PAYMENT_TYPE: { NAYAX, STRIPE } } = require('../../helpers/constants')
 const CustomLogger = require("../../helpers/customLogger");
@@ -70,14 +70,13 @@ module.exports = {
         Enabled,
         Braintree,
         Stripe,
-        iPay88,
+        Pay88,
         Paytm,
         Heartland,
         eGHL,
         Moneris,
         Xendit,
         AuthorizeNet,
-        PortOne,
         IsActive,
         CreatedBy = ObjectId.createFromHexString(context.data._id),
       } = addPaymentInput
@@ -89,14 +88,13 @@ module.exports = {
         Enabled: Enabled,
         Braintree: Braintree,
         Stripe: Stripe,
-        iPay88: iPay88,
+        Pay88: Pay88,
         Paytm: Paytm,
         Heartland: Heartland,
         eGHL: eGHL,
         Moneris: Moneris,
         Xendit: Xendit,
         AuthorizeNet: AuthorizeNet,
-        PortOne: PortOne,
         IsDeleted: false,
         CreatedBy: CreatedBy,
         PaymentName: PaymentName,
@@ -530,7 +528,7 @@ module.exports = {
       try {
         const { CustomerID, PaymentID } = validateInputs(
           args.pay88SignatureInput,
-          iPay88TransactionSchema
+          pay88TransactionSchema
         );
 
         if (CustomerID) {
@@ -541,7 +539,6 @@ module.exports = {
           : await getDatabase(context);
 
         const data = await getConfig(db, PaymentID, CustomerID);
-        const clientApiKey = context?.headers?.apikey;        
         const userData = await getUser(
           db,
           Users,
@@ -555,8 +552,7 @@ module.exports = {
           encryptedData,
           db,
           CustomerID,
-          userData,
-          clientApiKey
+          userData
         );
         const {
           refNo,

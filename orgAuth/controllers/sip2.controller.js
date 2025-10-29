@@ -20,7 +20,6 @@ const {
   parseCardNumbers,
   findOrCreateAccount,
   defaultGroupID,
-  processUserWithoutCreation
 } = require("../helpers/utils");
 const {
   INNOVATION_LOGIN_BARCODE_WITH_PIN,
@@ -127,7 +126,7 @@ const getHashId = async (req, res, db, authProviderConfig, patronDetails) => {
   const { headers, body } = req;
   const { orgId } = body;
   const tier = headers.tier ? headers.tier : STANDARD_TIER;
-  const { Mappings, CustomerID, _id, AllowUserCreation } = authProviderConfig;
+  const { Mappings, CustomerID, _id } = authProviderConfig;
   const mappedData = mapUserInfo(Mappings, patronDetails);
   const userName = mappedData.Username ? mappedData.Username : null;
   let firstName = null
@@ -164,19 +163,6 @@ const getHashId = async (req, res, db, authProviderConfig, patronDetails) => {
     defaultGroupId = await defaultGroupID(db, authProviderConfig)
   }
   const accountIdFromIdpRes = mappedData.Account ? mappedData.Account : null;
-
-  if (AllowUserCreation === false) {
-    mappedData.GroupID = idpGroupID?.length > 0 ? idpGroupID : defaultGroupId;
-    mappedData.FirstName = _firstName;
-    mappedData.LastName = _lastName;
-    const userDetails = await processUserWithoutCreation({
-      db,
-      mappedData,
-      authProviderConfig,
-    });
-    return setSuccessResponse(userDetails, res);
-  }
-
   const accountId = await findOrCreateAccount({
     db,
     accountIdFromIdpRes,

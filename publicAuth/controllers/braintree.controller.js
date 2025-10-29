@@ -5,6 +5,8 @@ const ERROR = require('../helpers/error-keys')
 const CustomLogger = require("../helpers/customLogger");
 const log = new CustomLogger()
 
+const statuses = ["authorized", "submitted_for_settlement"]
+
 module.exports.braintreeTransaction = async (req, res) => {
   log.lambdaSetup(req, 'braintreeTransaction', 'braintree.controller')
   try {
@@ -17,7 +19,7 @@ module.exports.braintreeTransaction = async (req, res) => {
 
     if (!transactionExists) {
       await insertToDb(response, db)
-      if (response.Status === "succeeded") await addValue(response, db, customer)
+      if (statuses.includes(response.Status)) await addValue(response, db, customer)
       if (success) {
         res.redirect(successURL)
       } else {

@@ -1,4 +1,4 @@
-const { imageSignedUrl, uploadMultipleFiles, uploadMultipleFilesV2} = require('../../helpers/imageUpload')
+const { imageSignedUrl, uploadMultipleFiles} = require('../../helpers/imageUpload')
 const {getObjectId: ObjectId} = require("../../helpers/objectIdConverter");
 const {getDb, isolatedDatabase} = require("../../config/dbHandler");
 const {verifyKioskAndUserAccess, verifyUserAccess, formObjectIds, getDatabaseOneCustomer} = require("../../helpers/util");
@@ -29,24 +29,6 @@ module.exports = {
           return {id: response.id, signedUrls: response.signedUrls}
         }
         return uploadMultipleFiles(fileInput, customerId, path, context)
-      } catch (error) {
-        return error
-      }
-    },
-    async uploadMultipleFilesV2 (_, { fileInput, customerId, path }, context, info) {
-      try {
-        const db = await getDb()
-        context.data.isKiosk  ? verifyKioskAndUserAccess(context, customerId) : verifyUserAccess(context, customerId)
-        if (path === 'TranslationService') {
-          const license = await db.collection('Licenses').findOne({CustomerID: ObjectId.createFromHexString(customerId), 'TranslationLicenseOption.Text': true})
-          if (!license) {
-            throw new GraphQLError(LICENSE_NOT_ACTIVE,{extensions: {code: '121'}})
-          }
-          path = `PublicUploads/${path}`
-          const response =  await uploadMultipleFilesV2(fileInput, customerId, path)
-          return {id: response.id, signedUrls: response.signedUrls}
-        }
-        return uploadMultipleFilesV2(fileInput, customerId, path, context)
       } catch (error) {
         return error
       }

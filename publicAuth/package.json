@@ -15,8 +15,7 @@
     "lint": "eslint .  --ext .js",
     "lint-fix": "eslint --fix .  --ext .js",
     "test-get": "npx cucumber-js",
-    "coverage": "nyc --reporter=html --reporter=text cucumber-js -t @socket",
-    "test-head-data-file": "env environment=test npx cucumber-js -t @headDataFile --publish"
+    "coverage": "nyc --reporter=html --reporter=text cucumber-js -t @socket"
   },
   "author": "",
   "license": "ISC",

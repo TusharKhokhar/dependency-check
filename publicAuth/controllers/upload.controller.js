@@ -1,7 +1,5 @@
 const model = require('../models/index')
-const { imageSignedUrl, getSignedUrl, accessKeysHead, binarySignedUrl, getBinaryFileSignedUrl, imageSignedUrlV2,
-  getBinaryFileSignedUrlV2
-} = require('../helpers/imageUpload')
+const { imageSignedUrl, getSignedUrl, accessKeysHead, binarySignedUrl, getBinaryFileSignedUrl} = require('../helpers/imageUpload')
 const { setSuccessResponse, setErrorResponse } = require('../services/api-handler')
 const ERROR = require('../helpers/error-keys')
 const { sendJobText} = require('../services/sms-handler')
@@ -529,7 +527,6 @@ const headDataFile = (s3, params, file) => {
             obj.PageRange = `1-${data.Metadata.pagecount}`
             resolve(obj)
           } else if (!unSureFormats.includes(splitFileNameForExt[splitFileNameForExt.length - 1])) {
-            // Handle when S3 shows more pages than recorded
             if(parseInt(data.Metadata.pagecount) > obj.TotalPagesPerFile){
               if(obj.PageRange === '1-1' && 1 <  obj.TotalPagesPerFile){
                 obj.TotalPagesPerFile = parseInt(data.Metadata.pagecount)
@@ -540,15 +537,6 @@ const headDataFile = (s3, params, file) => {
                   obj.TotalPagesPerFile = parseInt(data.Metadata.pagecount)
                 }
               }
-            }
-            // Handle when S3 shows fewer pages than recorded
-            else if(parseInt(data.Metadata.pagecount) < obj.TotalPagesPerFile){
-              let splitPageRange = obj.PageRange.split('-')
-              // If PageRange end is set to the last page as calculated by the Web UI, adjust PageRange
-              if(parseInt(splitPageRange[splitPageRange.length - 1]) === obj.TotalPagesPerFile){
-                obj.PageRange = `${splitPageRange[0]}-${data.Metadata.pagecount}`
-              }
-              obj.TotalPagesPerFile = parseInt(data.Metadata.pagecount)
             }
             resolve(obj)
           }
@@ -741,7 +729,7 @@ loginDisplayText, releaseCodeDisplayText, libraryCard, releaseCode, text, custom
 ) =>{
   const fileList = formInputData.length
       let template = ''
-      if (guestName) {
+      if (userName) {
         template = guestTemplate(guestName, fileList, customerData.CustomerName, guestDisplayText)
       } else if (libraryCard) {
         template = loginTemplate(libraryCard, fileList, customerData.CustomerName, loginDisplayText)
@@ -1140,55 +1128,4 @@ module.exports.generateTheme = (req, res) => {
   const themeCode = req.query.themeCode
   const colorPalette = generatePalette(themeCode)
   setSuccessResponse(colorPalette, res, req)
-}
-
-/**
- * API to generate multiple signed Urls with server-side encryption (v2)
- */
-
-module.exports.generateMultipleSignedUrlsV2 = async (req, res) => {
-  log.lambdaSetup(req, 'generateMultipleUrlsV2', 'auth.controller')
-  const {
-    uploadObjectsDetails
-  } = req.body
-  const subDomain = req.headers.subdomain
-  const tier = req.headers.tier
-  const db = tier === STANDARD_TIER ? await getDb() : await isolatedDatabase(subDomain)
-  if (uploadObjectsDetails.length === 0) {
-    await setErrorResponse(null, ERROR.NO_FILES_ENTERED, res, req)
-  } else if (!subDomain) {
-    await setErrorResponse(null, ERROR.CUSTOMER_NOT_FOUND, res, req)
-  } else {
-    try {
-      const customerId = await fetchCustomerId(subDomain)
-      if (!customerId) {
-        await setErrorResponse(null, ERROR.CUSTOMER_NOT_FOUND, res, req)
-      } else {
-        // Use a v2 version of the generateLinksPromise function that ensures server-side encryption
-        const signedUrlLinks = await generateLinksPromiseV2(uploadObjectsDetails, customerId, db)
-        await setSuccessResponse(signedUrlLinks, res, req)
-      }
-    } catch (e) {
-      log.error(e.toString())
-      await setErrorResponse(null, ERROR.SIGNED_URL_FAILED, res, req)
-    }
-  }
-}
-
-
-const generateLinksPromiseV2 = async (data, customerId, db) => {
-  // return new Promise(async (resolve, reject) => {
-  const arrayOfLinks = []
-  const arrayOfPostData = []
-  for (const upload of data) {
-    upload.customerId = customerId._id.toString()
-    upload.domain = customerId.DomainName
-    const retrievedLink = await imageSignedUrlV2(upload)
-    retrievedLink.contentType = upload.contentType
-    arrayOfLinks.push(retrievedLink)
-    arrayOfPostData.push({ FileName: retrievedLink.newFileName, IsProcessed: false })
-  }
-  const id = await postSignedUrlData(arrayOfPostData, db)
-  return { arrayOfLinks, id }
-  // })
 }

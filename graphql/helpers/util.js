@@ -12,8 +12,7 @@ const {
     AUTHORIZENET,
     XENDIT,
     MONERIS,
-    IPAY88,
-    PORTONE
+    IPAY88
   },
   PAYMENT_GATEWAYS_WEBHOOKS,
   ACCOUNT_SYNC_INTEGRATION,
@@ -29,7 +28,7 @@ const {GraphQLError, parse} = require("graphql");
 const {UNAUTHORIZED, INSUFFICIENT_PERMISSION} = require("./error-messages");
 const {encryptText, decryptText} = require("./encryptDecrypt");
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
-const { domainName, apiKey: configApiKeys } = require("../config/config");
+const {domainName} = require("../config/config");
 const { permissionMapping, adminDomainRestrictedAPIs, publicAPIs, apiUsedByKiosk } = require('./apiPermissions');
 const randomString = (length) => [...Array(length)].map(() => (~~(Math.random() * 36)).toString(36)).join('')
 const CustomLogger = require("../helpers/customLogger");
@@ -469,11 +468,6 @@ const performEncryption = async (data) => {
     return data
   }
 
-  if (data.PaymentType === PORTONE && data.PortOne.SecretKey) {
-    data.PortOne.SecretKey = await encryptText(data.PortOne.SecretKey)
-    return data
-  }
-
   if (data.PaymentType === MONERIS && data.Moneris.ApiToken && data.Moneris.StoreId && data.Moneris.CheckoutId) {
     data.Moneris.ApiToken = await encryptText(data.Moneris.ApiToken)
     data.Moneris.StoreId = await encryptText(data.Moneris.StoreId)
@@ -559,11 +553,6 @@ const performDecryption = async (data) => {
 
   if (data.PaymentType === XENDIT && data.Xendit.SecretKey) {
     data.Xendit.SecretKey = await decryptText(data.Xendit.SecretKey)
-    return data
-  }
-
-  if (data.PaymentType === PORTONE && data.PortOne.SecretKey) {
-    data.PortOne.SecretKey = await decryptText(data.PortOne.SecretKey)
     return data
   }
 
@@ -887,24 +876,6 @@ const normalizeValue = (value) => {
   return new RegExp(`^${pattern}$`, "i");
 };
 
-const getApiKeyName = (apiKey) => {
-  if (!apiKey) {
-    return "undefined";
-  }
-  return (
-    Object.keys(configApiKeys).find((key) => configApiKeys[key] === apiKey) ||
-    "unknown"
-  );
-};
-
-const logGraphQLOperation = (operationName, apiKey, requesterDomain) => {
-  const keyName = getApiKeyName(apiKey);
-
-  log.info(
-    `GraphQL Operation: ${operationName}, apiKeyName: ${keyName}, RequesterDomain: ${requesterDomain}`
-  );
-};
-
 module.exports = {
   randomString,
   formObjectIds,
@@ -940,7 +911,5 @@ module.exports = {
   attachUserLoginProvider,
   currencyCodeMap,
   escapeRegex,
-  normalizeValue,
-  getApiKeyName,
-  logGraphQLOperation
+  normalizeValue
 }

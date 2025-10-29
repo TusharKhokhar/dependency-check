@@ -4,7 +4,6 @@ const {
   formObjectIds,
   addCreateTimeStamp,
   checkResExistsAndUpdateBySessionId,
-  paymentRedirectUrl,
 } = require("../helpers/util");
 const CustomLogger = require("../helpers/customLogger");
 const { domainName } = require("../config/config");
@@ -20,7 +19,7 @@ module.exports.iPay88Response = async (req, res) => {
     responseData = formObjectIds(responseData);
     responseData = addCreateTimeStamp(responseData);
 
-    const { CustomerID, Source } = responseData;
+    const { CustomerID } = responseData;
     const db = await getDatabaseOneCustomer({}, CustomerID);
     const customer = await getCustomer(db, CustomerID, res);
     
@@ -30,12 +29,10 @@ module.exports.iPay88Response = async (req, res) => {
       responseData,
       customer,
       res,
-      req,
-      Source
+      req
     );
   } catch (error) {
     log.error(error);
-    const source = req.body?.response?.Source;
-    res.redirect(paymentRedirectUrl("error", domain, source, TRANSACTION_FAILED));
+    return res.redirect(`https://${customer?.DomainName}.${domainName}/add-value/payment-error?error=${TRANSACTION_FAILED}`)
   }
 };

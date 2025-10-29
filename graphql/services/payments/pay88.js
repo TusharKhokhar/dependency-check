@@ -4,31 +4,20 @@ const {
 } = require("../../helpers/constants");
 const { getUtcTime } = require("../../helpers/util");
 const { getObjectId: ObjectId } = require("../../helpers/objectIdConverter");
-const { domainName, apiKey } = require("../../config/config");
-
-const  getSourceFromApiKey = (apiKeyValue) => {
-  for (const [source, key] of Object.entries(apiKey)) {
-    if (key === apiKeyValue) {
-      return source;
-    }
-  }
-  return '';
-}
+const { domainName } = require("../../config/config");
 
 const generatePay88Signature = async (
   input,
   credentials,
   db,
   CustomerID,
-  userData,
-  clientApiKey
+  userData
 ) => {
   let { Amount, Currency } = input;
   Currency = Currency.toUpperCase();
-  const { iPay88 } = credentials;
-  const source = getSourceFromApiKey(clientApiKey);
+  const { Pay88 } = credentials;
   const { PaymentId, MerchantCode, SecretKey, ProdDesc } =
-    iPay88;
+    Pay88;
 
   const RefNo = crypto
     .randomBytes(64)
@@ -62,8 +51,7 @@ const generatePay88Signature = async (
       UserName: userData.Username,
       Name: `${userData.FirstName} ${userData.LastName}`,
       UserEmail: userData.PrimaryEmail,
-      ProdDesc: ProdDesc,
-      Source: source
+      ProdDesc: ProdDesc
     });
   }
 

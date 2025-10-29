@@ -151,8 +151,7 @@ const uploadToS3 = async (event, azureKeys, fileName, customerId, file) => {
         const uploadParams = {
             Bucket: bucketName,
             Key: s3Key,
-            Body: downloaded,
-            ServerSideEncryption: 'AES256'
+            Body: downloaded
         };
         const command = new PutObjectCommand(uploadParams);
         await s3Client.send(command);
@@ -194,8 +193,7 @@ const uploadBufferToS3 = async (buffer, bucketName, key, contentType = 'applicat
             Bucket: bucketName,
             Key: key,
             Body: buffer,
-            ContentType: contentType,
-            ServerSideEncryption: 'AES256'
+            ContentType: contentType
         };
         console.log('uploadParams: ',uploadParams);
 

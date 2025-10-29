@@ -48,7 +48,7 @@ PublicUploads.getPublicUploadsInformation = ({
       Object.assign(condition, { IsProcessed: isProcessed })
     }
     if (userName) {
-      Object.assign(condition, { Username: { $regex: `^${escapeRegex(userName)}$`, $options: 'i' }})
+      Object.assign(condition, { Username: new RegExp(userName, 'i') })
     }
     const searchCondition = { 'JobList.IsDeleted': false }
     const printedCondition = { }

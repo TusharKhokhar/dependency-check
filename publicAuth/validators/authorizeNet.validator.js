@@ -31,19 +31,12 @@ module.exports.authorizeNetValidator = async(req, res, next) => {
     const user = await getUser(db, customerId, paymentStats.UserID)
     if (!user) return await setPaymentErrorResponse(res, ERROR.WRONG_USER_ID)
 
-    let firstName = billTo?.firstName ||  user.FirstName ||'';
-    let lastName = billTo?.lastName || user.LastName|| '';
-
-    let fullName = `${firstName} ${lastName}`;
-
-    if (!fullName) fullName = null;
-
     let responseData = {
       TransactionID: transactionId,
       UserID: ObjectId.createFromHexString(user._id),
       CustomerID: ObjectId.createFromHexString(customerId),
       Username : user.Username,
-      Name:fullName,
+      Name: `${billTo.firstName} ${billTo.lastName}`,
       Email: email,
       Amount: Number(authAmount),
       ResponseCode: responseCode.toString(),

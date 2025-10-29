@@ -76,7 +76,7 @@ const nayaxTransactionSchema = {
   TerminalID: stringValidator,
 }
 
-const iPay88TransactionSchema = {
+const pay88TransactionSchema = {
   CustomerID: idValidator,
   PaymentID: stringValidator,
   Amount: numberValidator,
@@ -119,14 +119,7 @@ const monerisCredentialSchema = {
   CheckoutId: stringValidator,
 }
 
-const PortOneSchema = {
-  PublicKey: stringValidator,
-  SecretKey: stringValidator,
-  ApprovalURL: stringValidator,
-  UnApprovalURL: stringValidator
-}
-
-const iPay88CredentialSchema = {
+const pay88CredentialSchema = {
   PaymentId: stringValidator,
   MerchantCode: stringValidator,
   SecretKey: stringValidator,
@@ -141,8 +134,7 @@ const paymentGatewaySchema = {
   Heartland: heartlandCredentialSchema,
   Xendit: xenditCredentialSchema,
   Moneris: monerisCredentialSchema,
-  iPay88: iPay88CredentialSchema,
-  PortOne: PortOneSchema,
+  Pay88: pay88CredentialSchema,
 }
 
 const paymentSchema = Joi.object({
@@ -184,6 +176,5 @@ module.exports = {
   xenditTransactionSchema,
   nayaxTransactionSchema,
   paymentSchema,
-  iPay88TransactionSchema,
-  PortOneSchema
+  pay88TransactionSchema
 }

@@ -42,11 +42,6 @@ module.exports.relationMapping = {
     reference: 'AssociatedQuotaBalance',
     required: true,
     isArray: true
-  }, {
-    collectionName: Groups,
-    reference: 'EasyBookingGroupID',
-    required: true,
-    isArray: false
   }
   ],
   jobList: [],

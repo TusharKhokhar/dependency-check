@@ -4,7 +4,6 @@ const { fetchCustomer } = require('../controllers/customer.controller')
 const { userValidator, uploadValidator, smsAuditValidator } = require('../validators/index')
 const {
   generateMultipleSignedUrls,
-  generateMultipleSignedUrlsV2,
   confirmFileUpload,
   releaseCodeJobFinder,
   updateJob, generateTheme, printJobs, failedJobNotify, fetchLogo, updateTranslationJob, updateTranslationStatus,
@@ -75,7 +74,6 @@ Router.put('/confirmPassword', userValidator.confirmPasswordApi, confirmPassword
  */
 
 Router.post('/signedUrls', uploadValidator.signedUrls, generateMultipleSignedUrls)
-Router.post('/signedUrlsV2', uploadValidator.signedUrls, generateMultipleSignedUrlsV2)
 Router.post('/ipp/response', ippResponseSignedUrl)
 Router.get('/releaseCode/:code', releaseCodeJobFinder)
 Router.get('/printJobs', printJobs)

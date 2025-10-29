@@ -1831,19 +1831,6 @@ const customPermissionData = [/* 1 createdAt:2024-05-16T15:23:26.000Z*/
         "Order" : 1,
         "IsUserPortal" : false
     },
-
-    {
-        "_id" : ObjectId.createFromHexString("68edea09e6efc2a13f97c542"),
-        "PermissionName" : "Clone_Role",
-        "CustomerLevel" : true,
-        "ProductLevel" : [ "ePRINTit" ],
-        "ParentPermissionID" : ObjectId.createFromHexString("62d83031ae36eea807ccf6b3"),
-        "Enum" : 148,
-        "Order" : 2,
-        "IsDeleted" : false,
-        "PartnerLevel" : true,
-        "IsUserPortal" : false
-    },
 ]
 module.exports = {
     addCustomPermission: async () => {

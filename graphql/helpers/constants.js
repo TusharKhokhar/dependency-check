@@ -13,8 +13,7 @@ module.exports = {
     XENDIT: "Xendit",
     MONERIS: "Moneris",
     NAYAX: "Nayax",
-    IPAY88: "iPay88",
-    PORTONE: "PortOne",
+    IPAY88: "iPay88"
   },
   THIRD_PARTY_PROTON: "ProtonIntegration",
   THIRD_PARTY_EMAIL: "EmailIntegration",
@@ -34,7 +33,6 @@ module.exports = {
     STRIPE: `https://api.${domainName}/public/stripe/webhook`,
     AUTHORIZENET: `https://api.${domainName}/public/authorize/response`,
     XENDIT: `https://api.${domainName}/public/xendit/response`,
-    PORTONE: `https://api.${domainName}/public/portone/response`,
   },
   ACCOUNT_SYNC_INTEGRATION: "AccountSyncIntegration",
   NETWORK_INTEGRATION: "NetworkIntegration"

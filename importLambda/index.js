@@ -97,8 +97,7 @@ const uploadToS3 = async (csv, key) => {
             Bucket: bucketName,
             Key: key,
             Body: csv,
-            ContentType: 'text/csv',
-            ServerSideEncryption: 'AES256'
+            ContentType: 'text/csv'
         };
         const command = new PutObjectCommand(uploadParams);
         await s3Client.send(command);

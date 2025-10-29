@@ -78,10 +78,3 @@ Feature: AuthProviders Management
     Given a valid GraphQL mutation to update an existing AuthProvider with Custom parameters
     When the user invokes the updateAuthProvider mutation
     Then the response should include the updated AuthProvider data with Custom parameters
-
-@wkp
-
-  Scenario: add wkp type AuthProvider successfully
-    Given the wkp type AuthProvider with valid input
-    When the request is sent to wkp addAuthProvider API
-    Then the response should be successful for wkp AuthProvider

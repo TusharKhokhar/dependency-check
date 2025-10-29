@@ -17,7 +17,7 @@ module.exports.xenditResponse = async (req, res) => {
 
     if (!transactionExists) {
       await insertToDb(responseData, db)
-      if (responseData.Status !== 'failed') await addValue(responseData, db, customer)
+      if (responseData.Status !== 'EXPIRED') await addValue(responseData, db, customer)
       return res.sendStatus(200)
     } 
     return res.sendStatus(200)

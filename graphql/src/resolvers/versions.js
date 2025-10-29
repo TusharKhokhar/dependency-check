@@ -14,7 +14,7 @@ const model = require('../../models/index')
 const { getObjectId: ObjectId } = require('../../helpers/objectIdConverter')
 const { findReference } = require('../../helpers/referenceFinder')
 const { customerSecurity } = require('../../utils/validation')
-const {kioskVersionUpload, kioskVersionUploadV2} = require("../../helpers/imageUpload");
+const {kioskVersionUpload} = require("../../helpers/imageUpload");
 const CustomLogger = require("../../helpers/customLogger");
 const log = new CustomLogger()
 
@@ -151,19 +151,6 @@ module.exports = {
           verifyUserAccess(context, context.data.CustomerID);
         }
         return await kioskVersionUpload(versionUploadInput)
-      } catch (err) {
-        log.error(err);
-        throw new Error(err)
-      }
-    },
-
-    async uploadVersionV2 (_, { versionUploadInput }, context) {
-      log.lambdaSetup(context, 'versions', 'uploadVersionV2')
-      try {
-        if (context.data?.CustomerID) {
-          verifyUserAccess(context, context.data.CustomerID);
-        }
-        return await kioskVersionUploadV2(versionUploadInput)
       } catch (err) {
         log.error(err);
         throw new Error(err)

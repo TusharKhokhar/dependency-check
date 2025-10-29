@@ -181,8 +181,7 @@ let uploadToS3 = async (customerId, data, extension) => {
         const params = new PutObjectCommand({
             Bucket: BUCKET_NAME,
             Key: objectName,
-            Body: data,
-            ServerSideEncryption: 'AES256'
+            Body: data
         })
         console.log('params****',params);
         await s3.send(params);

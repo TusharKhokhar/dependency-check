@@ -201,79 +201,37 @@ const getGroupIds = async (db, payload, authProviderConfig) => {
   }
 };
 
-const getMatchingGroups = async (db, payload, authProviderConfig, hashId, EasybookingRuleTest) => {
+const getMatchingGroups = async (db, payload, authProviderConfig) => {
   try {
-    log.info("** INIT getMatchingGroups **");
-    log.info("** payload **", JSON.stringify(payload));
+    log.info("**** INIT getMatchingGroups ****")
+    log.info("**** payload ****", JSON.stringify(payload))
+    const { GroupAssignmentRules } = authProviderConfig;
+    log.info("GroupAssignmentRules", JSON.stringify(GroupAssignmentRules));
 
-    const allEasyBookingGroups = await db
-      .collection("Groups")
-      .find({
-        GroupType: "EasyBooking",
-        IsActive: true,
-        IsDeleted: false,
-        CustomerID: authProviderConfig.CustomerID,
-      })
-      .toArray();
-
-    let groupIds = [];
-    let allEvaluatedGroups = [];
-    let matchedGroup = null;
+    const matchedGroups = [];
 
     if (
-      allEasyBookingGroups &&
-      Array.isArray(allEasyBookingGroups) &&
-      allEasyBookingGroups.length > 0
+      GroupAssignmentRules &&
+      Array.isArray(GroupAssignmentRules) &&
+      GroupAssignmentRules.length > 0
     ) {
-      // Sort groups by priority first (lowest priority number = highest priority)
-      const sortedGroups = allEasyBookingGroups.sort(
-        (a, b) => a.Priority - b.Priority
-      );
+      for (const rule of GroupAssignmentRules) {
+        if (!rule.Enabled) continue;
 
-      for (const group of sortedGroups) {
-        if (!group.IsActive) continue;
+        for (const subGroup of rule.SubGroups) {
+          if (!subGroup.Active) continue;
 
-        const { GroupName, EasyBooking, Priority, _id } = group;
-        log.info("EasyBooking Group ID =>", _id);
-        const { EasyBookingGroups: subsets } = EasyBooking || {};
-
-        if (!Array.isArray(subsets) || subsets?.length === 0) {
-          continue;
-        }
-
-        let groupMatched = false;
-        const subsetEvaluations = [];
-
-        for (const subset of subsets) {
-          if (!subset.IsActive) continue;
-
-          const { Conditions, EasyBookingGroupName } = subset;
           let allRulesMatch = true;
-          const conditionResults = [];
 
-          for (const condition of Conditions) {
-            const { Field, Condition, Value, SingleMatch } = condition;
-            log.info("Condition =>", condition);
+          for (const rule of subGroup.Rules) {
+            const { Field, Condition, Value, Match } = rule;
             let responseValue = payload[Field];
-            
-            let result = {
-              Field,
-              Condition,
-              ExpectedValue: Value,
-              ActualValue: responseValue ?? null,
-              SingleMatch,
-              Matched: false,
-            };
 
             // Rule fails if responseValue not found
             if (responseValue === undefined || responseValue === null) {
               allRulesMatch = false;
-              result.Reason = "Field not found in idp response";
-              conditionResults.push(result);
               break;
             }
-
-            log.info("responseValue =>", responseValue);
 
             const responseValueType = getDataType(responseValue);
 
@@ -285,14 +243,12 @@ const getMatchingGroups = async (db, payload, authProviderConfig, hashId, Easybo
               ? responseValue
               : [responseValue];
 
-            log.info("valuesToCheck =>", valuesToCheck);
-
             let ruleMatched = false;
 
-            if (SingleMatch === true) {
+            if (Match === "single") {
               // Only check the first value in the array
               ruleMatched = checkCondition(valuesToCheck[0], Condition, Value);
-            } else if (SingleMatch === false) {
+            } else if (Match === "multi") {
               // Check all values in the array, return true if any value matches
               for (const val of valuesToCheck) {
                 if (checkCondition(val, Condition, Value)) {
@@ -302,198 +258,84 @@ const getMatchingGroups = async (db, payload, authProviderConfig, hashId, Easybo
               }
             }
 
-            result.Matched = ruleMatched;
             // If any rule doesn't match, break out of the loop
             if (!ruleMatched) {
               allRulesMatch = false;
-              result.Reason = `Expected ${Field} to ${Condition} '${Value?.join(", ")}', but got '${result.ActualValue}'`;
-              conditionResults.push(result);
               break;
             }
-            conditionResults.push(result);
           }
-
-          subsetEvaluations.push({
-            SubsetName: EasyBookingGroupName,
-            Matched: allRulesMatch,
-            ConditionResults: conditionResults,
-          });
-
-          // If all rules in the subGroup match, we found our highest priority match
+          // If all rules in the subGroup match, add it to matchedGroups
           if (allRulesMatch) {
-            groupMatched = true;
-            break; // Break out of subset loop since we found a match in this group
-          }
-        }
+            const alreadyMatched = matchedGroups.some(
+              (matchedGroup) => matchedGroup.groupName === rule.GroupName
+            );
 
-        allEvaluatedGroups.push({
-          EasyBookingGroupName: GroupName,
-          EasyBookingGroupId: _id,
-          Priority,
-          SubsetEvaluations: subsetEvaluations,
-        });
-
-        // If this group matched, get the group data and stop processing
-        if (groupMatched) {
-          log.info("Group Matched =>", groupMatched);
-          const { CustomerID } = authProviderConfig;
-          const groupData = await model.groups.getGroup(
-            db,
-            CustomerID,
-            GroupName
-          );
-          log.info("EasyBooking Group =>", groupData);
-          if (groupData) {
-            const permissionGroup =
-              await model.groups.getPermissionGroupByEasyBookingId(
-                db,
-                CustomerID,
-                groupData._id
-              );
-            log.info("Permission Group =>", permissionGroup);
-            if (permissionGroup) {
-              groupIds.push(permissionGroup._id);
-              if (permissionGroup.PrintConfigurationGroupID) {
-                groupIds.push(permissionGroup.PrintConfigurationGroupID);
-              }
-              log.info("matching group found =>", {
-                groupName: GroupName,
-                priority: Priority,
-                groupId: _id,
+            if (!alreadyMatched) {
+              matchedGroups.push({
+                groupName: rule.GroupName,
+                priority: rule.Priority,
               });
-              matchedGroup = {
-                EasyBookingGroupName: GroupName,
-                EasyBookingGroupId: _id,
-                Priority,
-                PermissionGroupId: permissionGroup._id,
-                PrintConfigurationGroupId: permissionGroup?.PrintConfigurationGroupID || null,
-              };
-              break; // Break out of main group loop - we found our highest priority match
             }
           }
         }
       }
     }
+    // Sort matchedGroups based on priority
+    matchedGroups.sort((a, b) => a.priority - b.priority);
 
-    const easybookingRuleTestLogs = {
-      // Type: "EasyBookingGroupMatching",
-      HashID: hashId,
-      CustomerID: authProviderConfig.CustomerID,
-      TenantDomain: authProviderConfig.OrgID,
-      AuthProviderID: authProviderConfig._id,
-      RawData: {
-        UserPayload: payload,
-        MatchedGroup: matchedGroup,
-        EvaluatedGroups: allEvaluatedGroups,
-      },
-      Message: getMatchReason(matchedGroup && matchedGroup?.PermissionGroupId, allEvaluatedGroups),
-    };
+    log.info("matchedGroups => ", JSON.stringify(matchedGroups));
 
-    if (EasybookingRuleTest === true) {
-      console.log("AuditLog =>", JSON.stringify(easybookingRuleTestLogs, null, 2));
-      await db.collection("EasybookingRuleTestLogs").insertOne(easybookingRuleTestLogs);
-    }
+    let groupIds = [];
+    if (matchedGroups.length > 0) {
+      const { CustomerID } = authProviderConfig;
 
-    
-
-    log.info("groupIds => ", JSON.stringify(groupIds));
-    return groupIds;
-  } catch (error) {
-    log.error("matchGroup Error => ", error);
-    return [];
-  }
-};
-
-const getMatchReason = (isMatched, allEvaluatedGroups) => {
-  if (!isMatched) {
-    return "No EasyBooking group matched any conditions"
-  }
-
-  let matchedSubset = null;
-  for (const group of allEvaluatedGroups) {
-    const { EasyBookingGroupName, EasyBookingGroupId, Priority, SubsetEvaluations } = group;
-    if (!Array.isArray(SubsetEvaluations)) continue;
-
-    for (const subset of SubsetEvaluations) {
-      if (subset.Matched === true) {
-        matchedSubset = {
-          EasyBookingGroupName,
-          EasyBookingGroupId,
-          Priority,
-          SubsetName: subset.SubsetName,
-          ConditionResults: subset.ConditionResults || [],
+      for (const group of matchedGroups) {
+        if (groupIds.length > 0) {
+          break;
+        }
+        const groupData = await model.groups.getGroup(db, CustomerID, group.groupName);
+        if (groupData) {
+          groupIds.push(groupData._id);
+          if (groupData.PrintConfigurationGroupID) {
+            groupIds.push(groupData.PrintConfigurationGroupID);
+          }
         }
       }
     }
-  }
-
-  if (matchedSubset) {
-    const { EasyBookingGroupName, Priority, SubsetName, ConditionResults } = matchedSubset;
-    const toReadable = val => {
-      if (Array.isArray(val)) return val.join(', ');
-      if (typeof val === 'object' && val !== null) return JSON.stringify(val);
-      if (val === undefined || val === null) return 'null';
-      return val.toString();
-    };
-  
-    const conditionTexts = ConditionResults?.map(cond => {
-      const { Field, Condition, ExpectedValue, ActualValue } = cond;
-      const expectedStr = Array.isArray(ExpectedValue)
-        ? ExpectedValue.join(', ')
-        : ExpectedValue;
-      const actualStr = toReadable(ActualValue);
-      return `- ${Field} ${Condition.replace(
-        /_/g,
-        ' '
-      )} ${expectedStr} (actual: ${actualStr})`;
-    }).join('\n');
-  
-    return `${EasyBookingGroupName} (Priority: ${Priority}) matched under '${SubsetName}' because:\n${conditionTexts}`;
+    log.info("groupIds=====", groupIds);
+    return groupIds
+  } catch (error) {
+    log.error("matchGroup Error => ", error);
   }
 };
 
 // Function to check conditions
 function checkCondition(responseValue, condition, value) {
-  if (!Array.isArray(value) || value.length === 0) return false;
-
-  let numVal, numResp;
   switch (condition) {
-    case "greater_than":
-      numVal = Number(value[0]);
-      numResp = Number(responseValue);
-      if (isNaN(numVal) || isNaN(numResp)) return false;
-      return numResp > numVal;
+    case "older_than_age":
+      value = Number(value);
+      responseValue = Number(responseValue);
+      return responseValue > value;
 
-    case "less_than":
-      numVal = Number(value[0]);
-      numResp = Number(responseValue);
-      if (isNaN(numVal) || isNaN(numResp)) return false;
-      return numResp < numVal;
+    case "younger_than_age":
+      value = Number(value);
+      responseValue = Number(responseValue);
+      return responseValue < value;
 
-    case "between":
-      if (value.length < 2) return false;
-      const [min, max] = value.map((v) => Number(v));
-      numResp = Number(responseValue);
-      if (isNaN(min) || isNaN(max) || isNaN(numResp)) return false;
-      return numResp >= min && numResp <= max;
+    case "between_age":
+      responseValue = Number(responseValue);
+      value = value.split(",").map((val) => val.trim());
+      return (
+        responseValue >= Number(value[0]) && responseValue <= Number(value[1])
+      );
 
-    case "equal":
-      if (!responseValue) return false;
-      const responseStr = responseValue?.toString()?.toLowerCase();
-      // Check if responseValue matches any value in the array
-      return value.some(val => val?.toString()?.toLowerCase() === responseStr);
+    case "equal_to":
+      responseValue = responseValue.toString();
+      return responseValue === value;
 
-    case "not_equal":
-      if (!responseValue) return false;
-      const responseStrNe = responseValue?.toString()?.toLowerCase();
-      // Check if responseValue does NOT match any value in the array
-      return !value.some(val => val?.toString()?.toLowerCase() === responseStrNe);
-
-    case "starts_with":
-      if (!responseValue || !value[0]) return false;
-      const str = responseValue.toString().toLowerCase();
-      const prefix = value[0].toString().toLowerCase();
-      return str.startsWith(prefix);
+    case "not_equal_to":
+      responseValue = responseValue.toString();
+      return responseValue !== value;
 
     default:
       return false;
@@ -599,16 +441,9 @@ async function updateUser({
     if (mappedData?.AccountID) {
       _user.AccountID = mappedData?.AccountID;
     }
-    if (
-      authProviderConfig.AuthProvider === "externalCardValidation" ||
-      authProviderConfig.AuthProvider === "wkp"
-    ) {
-      assignAuthProviderID(
-        dbUser,
-        _user,
-        authProviderConfig.AssociatedIdentityProvider
-      );
-    } else {
+    if (authProviderConfig.AuthProvider === "externalCardValidation") {
+      assignAuthProviderID(dbUser, _user, authProviderConfig.AssociatedIdentityProvider)
+    } else{
       assignAuthProviderID(dbUser, _user, authProviderConfig._id);
     }
     log.info("updateUser: _user ***", _user);
@@ -672,48 +507,5 @@ const defaultGroupID = async (db, authProviderConfig) => {
   return defaultGroupSettings;
 };
 
-const processUserWithoutCreation = async ({ db, authProviderConfig, mappedData, hashId, EasybookingRuleTest }) => {
-  try {
-    log.info("**** INIT processUserWithoutCreation ****", JSON.stringify(mappedData))
-    let groups = [];
-    if (mappedData.GroupID?.length) {
-      const groupData = await db
-        .collection("Groups")
-        .find({ _id: { $in: mappedData.GroupID } })
-        .toArray();
-
-      groups = groupData?.map((group) => {
-        return {
-          _id: group._id,
-          GroupName: group.GroupName,
-          GroupType: group.GroupType,
-        };
-      });
-    }
-    const userData = {
-      CustomerID: authProviderConfig?.CustomerID,
-      TenantDomain: authProviderConfig?.OrgID,
-      PrimaryEmail: mappedData?.PrimaryEmail,
-      Username: mappedData?.Username,
-      Group: groups,
-      FirstName: mappedData?.FirstName ? mappedData.FirstName : null,
-      LastName: mappedData?.LastName ? mappedData.LastName : null,
-      CardNumber: mappedData?.CardNumber
-        ? parseCardNumbers(mappedData.CardNumber)
-        : null,
-      Mobile: mappedData?.Mobile ? mappedData.Mobile : null,
-    };
-    if (EasybookingRuleTest) {
-      userData.HashID = hashId;
-    }
-    return userData
-  } catch (error) {
-    log.error("Error in processUserWithoutCreation => ", error);
-    throw error;
-  }
-};
-
 module.exports = { prepareConfigGlobals, setDiscoveryDocument, setJwks, getStateBase64, setPkceConfigs,
-  generateCode, createAzureADAuthorizationUrl, assignUserBalance, getGroupIds, isValidEmail, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, getNonceAndHash, validateNonce, rsaEncrypt, rsaDecrypt, findOrCreateAccount, defaultGroupID,
-  processUserWithoutCreation
-}
+    generateCode, createAzureADAuthorizationUrl, assignUserBalance, getGroupIds, isValidEmail, assignAuthProviderID, getMatchingGroups, updateUser, parseCardNumbers, getNonceAndHash, validateNonce, rsaEncrypt, rsaDecrypt, findOrCreateAccount, defaultGroupID  }

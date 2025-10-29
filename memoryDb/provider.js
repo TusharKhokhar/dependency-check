@@ -29,7 +29,6 @@ module.exports = {
     let aadConfig = null;
     let gSuiteConfig = null;
     let sip2Config = null;
-    let wkpConfig = null;
     let mappings = {
       Username: "",
       PrimaryEmail: "",
@@ -63,8 +62,6 @@ module.exports = {
       gSuiteConfig = configData.Config;
     } else if (authProvider === "sip2") {
       sip2Config = configData.Config;
-    }else if (authProvider === "wkp") {
-      wkpConfig = configData.Config;
     }
     mappings = authProvider === "internal" ? mappings : configData.Mappings;
 
@@ -83,7 +80,6 @@ module.exports = {
       PolarisConfig: polarisConfig,
       InternalLoginConfig: internalConfig,
       Sip2Config: sip2Config,
-      WkpConfig: wkpConfig,
       Mappings: mappings,
       GroupId: null,
       CustomerData: null,
@@ -96,15 +92,6 @@ module.exports = {
       CreatedBy: ObjectId.createFromHexString(),
       DisplayOnPortal: true,
     };
-    if (
-      authProvider === "sip2" ||
-      authProvider === "polaris" ||
-      authProvider === "innovative" ||
-      authProvider === "sirsi" ||
-      authProvider === "ldap"
-    ) {
-      providerData.AllowUserCreation = true;
-    }
     providerData = await performEncryption(providerData);
     const { insertedId } = await db
       .collection(collectionName)

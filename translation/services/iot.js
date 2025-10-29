@@ -1,4 +1,4 @@
-const { region, domainName } = require('../config/config')
+const { region} = require('../config/config')
 const { IoTClient, DescribeEndpointCommand } = require('@aws-sdk/client-iot');
 const { IoTDataPlaneClient, PublishCommand } = require('@aws-sdk/client-iot-data-plane');
 
@@ -27,7 +27,22 @@ const publishToken = async (data, region, accessParams, endPoint) => {
 }
 
 const retrieveEndpoint = async (region, accessParams) => {
-    return `iot.${domainName}`
+    const iotClient = new IoTClient({
+        region: region,
+        credentials: {
+            accessKeyId: accessParams.accessKeyId,
+            secretAccessKey: accessParams.secretAccessKey,
+            sessionToken: accessParams.sessionToken
+        }
+    });
+    const params = { endpointType: 'iot:Data-ATS' };
+    try {
+        const command = new DescribeEndpointCommand(params);
+        const data = await iotClient.send(command);
+        return data.endpointAddress;
+    } catch (err) {
+        throw err;
+    }
 };
 
 const publishToTopic = async (topic, message, endpoint, accessParams) => {

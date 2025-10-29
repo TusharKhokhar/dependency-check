@@ -7,7 +7,7 @@ const moment = require("../publicAuth/node_modules/moment");
 const collectionName = "PaymentStats";
 
 module.exports = {
-  addPaymentStats: async (customerId, refId, userId, paymentMethod, source = "web") => {
+  addPaymentStats: async (customerId, refId, userId, paymentMethod) => {
     const db = await getDb();
     const now = moment().toDate();
 
@@ -22,8 +22,6 @@ module.exports = {
       MerchantCode: "M14820",
       Currency: "USD",
       PaymentId: "6",
-      Source: source,
-      TransactionID: refId
     };
 
     const result = await db

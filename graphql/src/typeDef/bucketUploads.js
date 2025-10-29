@@ -139,7 +139,6 @@ const typeDef = `#graphql
     extend type Mutation {
         signedUrl(fileInput: FileInput): File
         uploadMultipleFiles(fileInput: [FileMetaData], customerId: ID, path: ServiceName): FileResponse
-        uploadMultipleFilesV2(fileInput: [FileMetaData], customerId: ID, path: ServiceName): FileResponse
         confirmFileUpload (customerId: ID, recordId: ID, confirmFileUploadData: ConfirmFileUpload): ConfirmFileUploadSchema
         confirmFileUploadV2 (customerId: ID, recordId: ID, confirmFileUploadData: ConfirmFileUploadV2Input): confirmFileUploadV2Response
     }`

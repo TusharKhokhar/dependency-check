@@ -1,7 +1,3 @@
-const { getObjectId: ObjectId } = require('../helpers/objectIdConvertion')
-const CustomLogger = require("../helpers/customLogger");
-const log = new CustomLogger()
-
 const Groups = {}
 
 Groups.getGroup = async (db, customerID, groupName) => {
@@ -12,27 +8,5 @@ Groups.getGroup = async (db, customerID, groupName) => {
     throw new Error(err)
   }
 }
-
-Groups.getPermissionGroupByEasyBookingId = async (
-  db,
-  customerID,
-  easyBookingGroupID
-) => {
-  try {
-    const permissionGroup = await db
-      .collection("Groups")
-      .findOne({
-        GroupType: "Permissions",
-        EasyBookingGroupID: ObjectId.createFromHexString(easyBookingGroupID),
-        CustomerID: ObjectId.createFromHexString(customerID),
-        IsActive: true,
-        IsDeleted: false,
-      });
-    return permissionGroup;
-  } catch (err) {
-    log.error("Failed to get permission group by EasyBooking group", err);
-    throw new Error(err);
-  }
-};
 
 module.exports = Groups

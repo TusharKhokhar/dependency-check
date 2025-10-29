@@ -25,7 +25,6 @@ type AuthProvider {
     InternalLoginConfig: InternalLoginConfigSchema,
     InnovativeConfig: InnovativeConfigSchema,
     ExternalCardValidationConfig: ExternalCardValidationConfigSchema,
-    WkpConfig: WkpSchema,
     AssociatedIdentityProvider: ID,
     CallbackUrl: String,
     PolarisConfig: PolarisConfigSchema,
@@ -36,7 +35,6 @@ type AuthProvider {
     Sip2Config: Sip2ConfigSchema,
     GroupAssignmentRules: [GroupAssignmentRulesSchema],
     CustomFieldsEnabled: Boolean,
-    AllowUserCreation: Boolean,
     CustomFields: [CustomFieldSchema]
 }
 
@@ -105,7 +103,6 @@ input AuthProviderInput {
     Mappings: MappingsInput!,
     GroupId: GroupIdInput,
     DisplayOnPortal: Boolean,
-    AllowUserCreation: Boolean,
     CreatedBy: String,
     IsDeleted: Boolean,
     Tags: [String],
@@ -116,7 +113,6 @@ input AuthProviderInput {
     InnovativeConfig: InnovativeConfigInput,
     PolarisConfig: PolarisConfigInput,
     ExternalCardValidationConfig: ExternalCardValidationInput,
-    WkpConfig: WkpInput,
     AssociatedIdentityProvider: ID,
     LabelText: String,
     DefaultGroupName: String,
@@ -446,27 +442,6 @@ input Sip2ConfigInput {
     BarCodeLabelText: String,
     PinLabelText: String,
 }
-
-type WkpSchema {
-    ClientId: String,
-    ClientSecret: String,
-    Scope: String,
-    TokenEndpoint: String,
-    OcpApimSubscriptionKey: String,
-    WkpAuthEndpoint: String,
-    PinLabelText: String
-}
-
-input WkpInput {
-    ClientId: String,
-    ClientSecret: String,
-    Scope: String,
-    TokenEndpoint: String,
-    OcpApimSubscriptionKey: String,
-    WkpAuthEndpoint: String,
-    PinLabelText: String
-}
-
 enum LoginTypeSip2 {
     BarcodeWithPin,
     BarcodeOnly
@@ -484,8 +459,7 @@ enum AuthProviderOptions {
     sirsi,
     polaris,
     sip2,
-    externalCardValidation,
-    wkp
+    externalCardValidation
 }
 
 type AuthProvidersResponse {

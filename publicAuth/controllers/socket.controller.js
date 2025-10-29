@@ -125,7 +125,7 @@ module.exports.sendSuccessToConnectedClients = async (req, res) => {
       if(data){
         await instance.collection('ThingSessions').findOneAndDelete({ _id: data._id })
       }
-      return await setSuccessResponse({ message: STATUS_SENT_SUCCESSFULLY }, res, req)
+      await setSuccessResponse({ message: STATUS_SENT_SUCCESSFULLY }, res, req)
     } else if (releaseCode) {
       const data = await instance.collection('ThingSessions').findOne({ Topic: releaseCode })
       const params = {
@@ -140,7 +140,7 @@ module.exports.sendSuccessToConnectedClients = async (req, res) => {
       if(data){
         await instance.collection('ThingSessions').findOneAndDelete({ _id: data._id })
       }
-      return await setSuccessResponse({ message: STATUS_SENT_SUCCESSFULLY }, res, req)
+      await setSuccessResponse({ message: STATUS_SENT_SUCCESSFULLY }, res, req)
     } else {
       const data = await instance.collection('ThingSessions').findOne({ SessionID: sessionId })
       const params = {
@@ -156,7 +156,7 @@ module.exports.sendSuccessToConnectedClients = async (req, res) => {
         await instance.collection('ThingSessions').findOneAndDelete({ _id: data._id })
       }
     }
-    return await setSuccessResponse({ message: JOB_SENT_SUCCESSFULLY }, res, req)
+    await setSuccessResponse({ message: JOB_SENT_SUCCESSFULLY }, res, req)
   } catch (error) {
     console.log('error*****',error)
     log.error(error.toString())

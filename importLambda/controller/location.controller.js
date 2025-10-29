@@ -1,12 +1,11 @@
 const axios = require('axios');
 const {getApiKey} = require("../services/iot-handler");
 const {region} = require("../config/config");
-const { find } = require('geo-tz')
 
-const formatLocation = async (location, customerId) => {
+const formatLocation = async (location, customerId, countries) => {
     const addressResult = await fetchLocation(location.Address, location.City, location.State,
       location.Country, location.ZipCode);
-    const timezone = getTimezoneByLatLon(addressResult?.latitude, addressResult?.longitude)
+    const timezone = getTimezoneByCountryName(countries, location.Country)
     const final =  {
         Location: location.Location,
         Description: location.Description,
@@ -112,13 +111,10 @@ const fetchLocation = async (address, city, state, country, zipCode) => {
     }
 }
 
-const getTimezoneByLatLon = (latitude, longitude) => {
-    if (latitude == null || longitude == null) {
-        return null;
-    }
-    const timezone = find(latitude, longitude);
-    console.log('timezone--------', timezone);
-    return timezone ? timezone[0] : null;
+const getTimezoneByCountryName = (countries, countryName) => {
+    const country = Object.values(countries).find(c => c.name.toLowerCase() === countryName?.toLowerCase());
+    console.log('country--------',country);
+    return country ? country.timezones[0] : null; // Return first timezone or null if not found
 }
 
 module.exports = { formatLocation }

@@ -154,14 +154,13 @@ const ipay88WebhookSchema = {
   CustomerID: idValidator,
   Amount: numberValidator,
   AuthCode: stringValidatorOpt,
-  TransactionID: stringValidator,
+  TransId: stringValidator,
   Username: stringValidatorOpt,
   UserID: idValidator,
   PaymentMethod: stringValidator,
   Status: stringValidator,
   ErrDesc: stringValidatorOpt,
   ValueAddedMethod: stringValidator,
-  Source: stringValidatorOpt,
   TransactionStartTime: dateValidator,
   TransactionEndTime: dateValidator
 };

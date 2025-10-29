@@ -31,12 +31,12 @@ module.exports.iPay88Validator = async (req, res, next) => {
       return await setErrorResponse(null, ERROR.UNKNOWN_ERROR, res);
     }
 
-    const { CustomerID, Amount, TransactionStartTime, Source } = paymentData;
+    const { CustomerID, Amount, TransactionStartTime } = paymentData;
     req.body.response = {
       CustomerID: CustomerID.toString(),
       Amount,
       AuthCode,
-      TransactionID: TransId,
+      TransId,
       Username: paymentData.UserName,
       UserID: paymentData?.UserID.toString(),
       PaymentMethod: IPAY88,
@@ -44,7 +44,6 @@ module.exports.iPay88Validator = async (req, res, next) => {
       ValueAddedMethod: VALUE_ADDED_METHOD,
       TransactionStartTime: getUtcTime(TransactionStartTime),
       TransactionEndTime: getUtcTime(),
-      Source: Source,
       ErrDesc: ErrDesc
     };
     next();

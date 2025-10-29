@@ -11,17 +11,14 @@ const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
 const atriumModule = require("../../services/payments/atrium");
 const { mockGetSecretManagerKey } = require("../mocks/mocks");
-const { addPaymentConfiguration } = require("../mutations/payment.mutation");
-const { getDb } = require("../../config/dbHandler");
-const { faker } = require("@faker-js/faker");
+const { addPaymentConfiguration } = require("../mutations/payment.mutation")
 
 const expect = chai.expect;
 let axiosStub;
 let thingID;
 let globalResponse = {};
 const context = {};
-let authTokenStub, tokenStub, mockBalance;
-let transactionID = faker.string.alphanumeric(20).toUpperCase();
+let authTokenStub, tokenStub;
 
 Before('@Payment',async function () {
   response = null;
@@ -149,8 +146,8 @@ When(
   "the sendTransaction function is called for CBORD PaymentType",
   async function () {
     const event = getEvent(sendTransaction);
-    const mockXmlFirstResponse = `<Message><CSGoldMessages><Class>0210</Class><Code>009090</Code><SysTraceAuditNumber>000064</SysTraceAuditNumber><ResponseCode>00</ResponseCode><Location>3802</Location><PaymentMedia>01</PaymentMedia><Plan>1000</Plan><AmountDue>USDC000000000000</AmountDue><MealsCounterBalance>USDC000000000000</MealsCounterBalance><MealsRemain>USDC000000000999</MealsRemain><NumberMealsSmallBucket>USDC000000000001</NumberMealsSmallBucket><TaxPercent1>USDC000000000000</TaxPercent1><ApprovedAmount>USDC000000000100</ApprovedAmount><PatronID>119505</PatronID><Patron>EPRINTIT, EPRINTIT04</Patron><HostMessage>Approved - 999 meals left for meal plan 1000 at 20250402 071036</HostMessage><TransID>${transactionID}</TransID></CSGoldMessages></Message>\n`;
-    const mockXmlSecondResponse = `<Message><CSGoldMessages><Class>0210</Class><Code>009090</Code><SysTraceAuditNumber>000064</SysTraceAuditNumber><ResponseCode>00</ResponseCode><Location>3802</Location><PaymentMedia>01</PaymentMedia><Plan>1000</Plan><AmountDue>USDC000000000000</AmountDue><MealsCounterBalance>USDC000000000000</MealsCounterBalance><MealsRemain>USDC000000000999</MealsRemain><NumberMealsSmallBucket>USDC000000000001</NumberMealsSmallBucket><TaxPercent1>USDC000000000000</TaxPercent1><ApprovedAmount>USDC000000000100</ApprovedAmount><PatronID>119505</PatronID><Patron>EPRINTIT, EPRINTIT04</Patron><HostMessage>Success - 999 meals left for meal plan 1000 at 20250402 071036</HostMessage><TransID>${transactionID}</TransID></CSGoldMessages></Message>\n`;
+    const mockXmlFirstResponse = `<Message><CSGoldMessages><Class>0210</Class><Code>009090</Code><SysTraceAuditNumber>000064</SysTraceAuditNumber><ResponseCode>00</ResponseCode><Location>3802</Location><PaymentMedia>01</PaymentMedia><Plan>1000</Plan><AmountDue>USDC000000000000</AmountDue><MealsCounterBalance>USDC000000000000</MealsCounterBalance><MealsRemain>USDC000000000999</MealsRemain><NumberMealsSmallBucket>USDC000000000001</NumberMealsSmallBucket><TaxPercent1>USDC000000000000</TaxPercent1><ApprovedAmount>USDC000000000100</ApprovedAmount><PatronID>119505</PatronID><Patron>EPRINTIT, EPRINTIT04</Patron><HostMessage>Approved - 999 meals left for meal plan 1000 at 20250402 071036</HostMessage><TransID>44449663</TransID></CSGoldMessages></Message>\n`;
+    const mockXmlSecondResponse = `<Message><CSGoldMessages><Class>0210</Class><Code>009090</Code><SysTraceAuditNumber>000064</SysTraceAuditNumber><ResponseCode>00</ResponseCode><Location>3802</Location><PaymentMedia>01</PaymentMedia><Plan>1000</Plan><AmountDue>USDC000000000000</AmountDue><MealsCounterBalance>USDC000000000000</MealsCounterBalance><MealsRemain>USDC000000000999</MealsRemain><NumberMealsSmallBucket>USDC000000000001</NumberMealsSmallBucket><TaxPercent1>USDC000000000000</TaxPercent1><ApprovedAmount>USDC000000000100</ApprovedAmount><PatronID>119505</PatronID><Patron>EPRINTIT, EPRINTIT04</Patron><HostMessage>Success - 999 meals left for meal plan 1000 at 20250402 071036</HostMessage><TransID>44449663</TransID></CSGoldMessages></Message>\n`;
 
     axiosStub.onFirstCall().resolves({ data: mockXmlFirstResponse });
     axiosStub.onSecondCall().resolves({ data: mockXmlSecondResponse });
@@ -197,8 +194,8 @@ When(
 
     const event = getEvent(sendTransaction);
 
-    mockBalance = {
-      txid: transactionID,
+    const mockBalance = {
+      txid: 2855956,
       approved: 1,
       code: "APPR001",
       message: "Approved",
@@ -232,18 +229,6 @@ Then(
     expect(result).to.have.property("statusCode").that.equals(200);
   }
 );
-
-Then("the PaymentStats record in MongoDB should have status {string}",
-  async function(expectedStatus) {
-  const db = await getDb();
-    const paymentRecord = await db
-      .collection("PaymentStats")
-      .findOne({ TransactionID: transactionID });
-
-    expect(paymentRecord).to.not.be.null;
-    expect(paymentRecord.Status).to.equal(expectedStatus);
-  }
-)
 
 // Scenario: Failed getBalance retrieval with wrong CardNumber
 Given(
@@ -411,31 +396,3 @@ Then(
     });
   }
 );
-
-// Scenario: Successfully add a new payment PortOne
-Given(
-  "I have a valid payment input for PortOne",
-  function () {
-    return addPaymentConfiguration.variables.addPaymentInput;
-  }
-);
-
-When("I send a request to add payment configuration for PortOne", async function () {
-  const event = getEvent(addPaymentConfiguration);
-
-  try {
-    const response = await handler(event, context);
-    response.body = JSON.parse(response.body);    
-    globalResponse.response = response;
-  } catch (error) {
-    console.error("Error in Lambda Handler:", error);
-    throw error;
-  }
-});
-
-Then("the response should have status code {int} and response should have PortOne details", function (statusCode) {
-  expect(statusCode).to.equal(globalResponse.response.statusCode);
-  const paymentConfiguration = globalResponse.response.body.data.addPaymentConfiguration;
-  expect(paymentConfiguration).to.have.property("_id");
-  expect(paymentConfiguration).to.have.property("PortOne").that.is.an("object");
-});

@@ -9,9 +9,8 @@ const typeDef = `#graphql
         Enabled: String,
         Braintree: BraintreeSchema,
         Stripe: StripeSchema,
-        iPay88: iPay88Schema,
+        Pay88: Pay88Schema,
         Paytm: PaytmSchema,
-        PortOne: PortOneSchema,
         Heartland: HeartlandSchema,
         eGHL: eGHLSchema,
         Moneris: MonerisSchema,
@@ -35,14 +34,13 @@ const typeDef = `#graphql
         Enabled: String,
         Braintree: BraintreeInput,
         Stripe: StripeInput,
-        iPay88: iPay88Input,
+        Pay88: Pay88Input,
         Paytm: PaytmInput,
         Heartland: HeartlandInput,
         eGHL: eGHLInput,
         Moneris: MonerisInput,
         Xendit: XenditInput,
         AuthorizeNet: AuthorizeNetInput,
-        PortOne: PortOneInput,
         CreatedBy: String,
         UpdatedBy: String,
         DeletedAt: Date,
@@ -88,7 +86,7 @@ const typeDef = `#graphql
         WebhookURL: String
     }
 
-    type iPay88Schema {
+    type Pay88Schema {
         PaymentName: String,
         PaymentId: ID,
         MerchantCode: String,
@@ -96,7 +94,7 @@ const typeDef = `#graphql
         ProdDesc: String,
     }
 
-    input iPay88Input {
+    input Pay88Input {
         PaymentId: String,
         MerchantCode: String,
         SecretKey: String
@@ -355,21 +353,6 @@ const typeDef = `#graphql
         Device: String
         Currency: String
         CardNumber: String!
-    }
-    
-    type PortOneSchema {
-        PublicKey: String,
-        SecretKey: String,
-        ApprovalURL: String,
-        UnApprovalURL: String
-        WebhookURL: String
-    }
-
-    input PortOneInput {
-        PublicKey: String,
-        SecretKey: String,
-        ApprovalURL: String,
-        UnApprovalURL: String
     }
 
     extend type Mutation {

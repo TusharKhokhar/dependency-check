@@ -196,30 +196,13 @@ const checkResExistsAndSave = async (db, transactionId, responseData, customer, 
   }
 }
 
-const paymentRedirectUrl = (type, domain, source, err = "") => {
-  const isMobile = ["ios", "android", "mobile"].includes(source?.toLowerCase?.());
-
-  const baseUrl = isMobile
-    ? `https://mobile.${domainName}/add-value/`
-    : `https://${domain}.${domainName}/add-value/`;
-
-  if (type === "success") {
-    return `${baseUrl}payment-success`;
-  } else if (type === "error") {
-    return `${baseUrl}payment-error?error=${err}`;
-  } else {
-    throw new Error("Invalid redirect type. Must be 'success' or 'error'.");
-  }
-};
-
 const checkResExistsAndUpdateBySessionId = async (
   db,
   sessionID,
   responseData,
   customer,
   res,
-  req,
-  Source
+  req
 ) => {
   try {
     const transactionExists = await db
@@ -231,7 +214,7 @@ const checkResExistsAndUpdateBySessionId = async (
         await updateToDbBySessionId(responseData, db);
         await addValue(responseData, db, customer);
         if (responseData?.PaymentMethod === IPAY88) {
-          res.redirect(paymentRedirectUrl("success", domain, Source));
+          return res.redirect(`https://${domain}.${domainName}/add-value/payment-success`)
         } else {
           return setSuccessResponse(
             { message: TRANSACTION_RESPONSE_ADDED },
@@ -242,20 +225,14 @@ const checkResExistsAndUpdateBySessionId = async (
       } else {
         await updateToDbBySessionId(responseData, db);
         if (responseData?.PaymentMethod === IPAY88) {
-          res.redirect(paymentRedirectUrl("error", domain, Source, responseData?.ErrDesc));
+          return res.redirect(`https://${domain}.${domainName}/add-value/payment-error?error=${responseData?.ErrDesc}`)
         } else {
           return setErrorResponse(null, ERROR.TRANSACTION_DECLINED, res);
         }
       }
     } else {
       if (responseData?.PaymentMethod === IPAY88) {
-          const isMobile = ["ios", "android", "mobile"].includes(
-            Source?.toLowerCase?.()
-          );
-          const baseUrl = isMobile
-            ? `https://mobile.${domainName}/add-value/payment-success`
-            : `https://${domain}.${domainName}/add-value/payment-error?error=${TRANSACTION_NOT_FOUND}`;
-          res.redirect(baseUrl);
+        return res.redirect(`https://${domain}.${domainName}/add-value/payment-error?error=${TRANSACTION_NOT_FOUND}`)
       } else {
         return setSuccessResponse({ message: TRANSACTION_NOT_FOUND }, res, req);
       }
@@ -397,7 +374,6 @@ module.exports = {
   getPaymentStatsBySessionId,
   checkResExistsAndUpdateBySessionId,
   escapeRegex,
-  paymentRedirectUrl,
 }
 
 

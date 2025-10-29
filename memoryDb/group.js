@@ -62,8 +62,7 @@ module.exports = {
             "CreatedBy" : ObjectId.createFromHexString(),
             "IsDeleted" : false,
             "UpdatedBy" : ObjectId.createFromHexString(),
-            "AssociatedQuotaBalance" : [],
-            "EasyBookingGroupID": null
+            AssociatedQuotaBalance : []
         }
         const groupData = await db.collection(collectionName).insertOne(permissionGroup)
         return {insertedId: groupData.insertedId, ops: [permissionGroup]}
@@ -104,72 +103,6 @@ module.exports = {
         }
         const group = await db.collection(collectionName).insertOne(quotaGroup)
         return {insertedId: group.insertedId, ops: [quotaGroup]}
-    },
-    createEasyBookingGroup: async (customerId, roleId = null) => {
-        const db = await getDb()
-        const groupData = {
-          "Label": faker.lorem.word(),
-          "GroupName": faker.lorem.word(),
-          "Description": null,
-          "GroupType": "EasyBooking",
-          "DeviceID": null,
-          "Priority": null,
-          "Enabled": true,
-          "RoleType": roleId,
-          "Access": null,
-          "PrintConfig": null,
-          "LMSRules": null,
-          "Policies": {
-            "MaxSessionsPerday": 1,
-            "MaxNumberSessionsPerWeek": 1,
-            "MaxTimePerDay": 1,
-            "MaxTimePerWeek": 2,
-            "FutureDaysAdvance": 1,
-            "MaxOutstandingBookings": 2,
-            "MaxOutstandingTime": 2
-          },
-          "Quota": null,
-          "EasyBooking": {
-            "Priority": 1,
-            "Description": "this is for testing",
-            "EnableSessionSettings": true,
-            "EasyBookingGroups": [
-              {
-                "EasyBookingGroupName": faker.lorem.word(),
-                "IsActive": true,
-                "Conditions": [
-                  {
-                    "Field": "test",
-                    "Condition": "equal",
-                    "Value": [
-                      "test"
-                    ],
-                    "SingleMatch": false
-                  }
-                ]
-              }
-            ]
-          },
-          "RulesID": null,
-          "CustomerID": customerId,
-          "UserID": null,
-          "IsActive": true,
-          "PrintReview": null,
-          "ModifyPrintJob": null,
-          "PrinterGroups": null,
-          "PrintGroups": null,
-          "PrintConfigurationGroupID": null,
-          "QuotaBalance": null,
-          "AssociatedQuotaBalance": null,
-          "DebitBalancePriority": null,
-          "Tags": [
-            "test"
-          ],
-          "CreatedBy": ObjectId.createFromHexString(),
-          "IsDeleted": false
-        }
-        const group = await db.collection(collectionName).insertOne(groupData)
-        return {insertedId: group.insertedId, ops: [groupData]}
     },
     findGroupById: async (groupId) => {
         const db = await getDb()

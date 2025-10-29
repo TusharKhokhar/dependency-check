@@ -18,7 +18,6 @@ const uploadToS3 = async ({ bucket, key, body, contentType }) => {
             Key: key,
             Body: body,
             ContentType: contentType,
-            ServerSideEncryption: 'AES256'
         });
 
         await s3Client.send(command);

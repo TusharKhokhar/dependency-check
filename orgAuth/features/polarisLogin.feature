@@ -24,7 +24,6 @@ Feature: Login with PolarisLogin
             | The connection was refused by the server. Please check configuration |
             | The connection attempt timed out. Please check configuration         |
             | DNS lookup failed for hostname. Please check configuration           |
-            | Invalid provider configuration                                       |
 
     Scenario: Incorrect authProvider configuration for PolarisLogin login
         Given an authProvider "<configuration>" for Polaris login
@@ -47,17 +46,7 @@ Feature: Login with PolarisLogin
         Then The response status should be 200 for Polaris login
         And The response should contain hashId for Polaris login
 
-    Scenario: Assign user to a group based on matched EasyBooking group rules in Polaris login
-        Given an EasyBooking group is created with specific matching conditions for Polaris login
+    Scenario: Assign user to a group based on matched GroupAssignmentRules in Polaris login
+        Given an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'Test Users' with specific matching conditions in Polaris login
         When I send a POST request for Polaris login
-        Then The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules for Polaris login
-
-    Scenario: Handle user login when AllowUserCreation is enabled
-        Given a valid Polaris auth provider config with AllowUserCreation set to true
-        When I send a POST request for Polaris login
-        Then the system should create or update the user and return a hashId for Polaris login
-
-    Scenario: Handle user login when AllowUserCreation is disabled
-        Given a valid Polaris auth provider config with AllowUserCreation set to false
-        When I send a POST request for Polaris login
-        Then the system should process the request without creating or updating the user and return the validated user response for Polaris
+        Then The user should be assigned to the "Test Polaris Users" if rules matches for this group in Polaris login

@@ -12,7 +12,7 @@ const { STANDARD_TIER } = require('../../helpers/constants')
 const { isolatedDatabase } = require('../../config/dbHandler')
 const { customerSecurity } = require('../../utils/validation')
 const CustomLogger = require("../../helpers/customLogger");
-const ipValidator = require('ipaddr.js');
+const ipValidator = require('ip');
 const log = new CustomLogger()
 dot.keepArray = true
 
@@ -193,10 +193,10 @@ module.exports = {
 }
 
 const validateIpAddressAndCidrRanges = async (updateJobListInput) => {
-  const isValidIP = (address) => ipValidator.IPv4.isIPv4(address) || ipValidator.IPv6.isIPv6(address);
+  const isValidIP = (address) => ipValidator.isV4Format(address) || ipValidator.isV6Format(address);
   const isValidCIDR = (cidr) => {
     try {
-      ipValidator.parseCIDR(cidr); // This will throw an error if the CIDR is invalid
+      ipValidator.cidrSubnet(cidr); // This will throw an error if the CIDR is invalid
       return true;
     } catch {
       return false;

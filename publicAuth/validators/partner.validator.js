@@ -30,11 +30,8 @@ module.exports = {
   },
   userValidate : (req, res, next) => {
     const validateUser = Joi.object().keys({
-      userName: Joi.alternatives()
-        .try(Joi.string(), Joi.number())
-        .required()
-        .error(new Error("Username is required")),
-      password: Joi.string().optional(),
+      userName: Joi.any().required().error(new Error('Username is required')),
+      password: Joi.string(),
       identityProvider: Joi.string().required().error(new Error('Identity Provider is required'))
     })
     const { error } = validateUser.validate(req.body)

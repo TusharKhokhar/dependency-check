@@ -56,11 +56,6 @@ module.exports = {
             data.ExternalCardValidationConfig.ClientSecret = data?.ExternalCardValidationConfig?.ClientSecret ? await encryptText(data.ExternalCardValidationConfig.ClientSecret) : null
             return data
         }
-
-        if (data.AuthProvider === 'wkp' && data.WkpConfig.ClientId && data.WkpConfig.ClientSecret) {
-            data.WkpConfig.ClientId = await encryptText(data.WkpConfig.ClientId)
-            data.WkpConfig.ClientSecret = await encryptText(data.WkpConfig.ClientSecret)
-        }
         return data
     },
     performDecryption: async (data) => {
@@ -116,11 +111,6 @@ module.exports = {
         if (data.AuthProvider === 'externalCardValidation') {
             data.ExternalCardValidationConfig.ClientId = data?.ExternalCardValidationConfig?.ClientId ? await decryptText(data.ExternalCardValidationConfig.ClientId) : null
             data.ExternalCardValidationConfig.ClientSecret = data?.ExternalCardValidationConfig?.ClientSecret ? await decryptText(data.ExternalCardValidationConfig.ClientSecret) : null
-            return data
-        }
-        if (data.AuthProvider === 'wkp' && data.WkpConfig.ClientId && data.WkpConfig.ClientSecret) {
-            data.WkpConfig.ClientId = await decryptText(data.WkpConfig.ClientId)
-            data.WkpConfig.ClientSecret = await decryptText(data.WkpConfig.ClientSecret)
             return data
         }
         return data

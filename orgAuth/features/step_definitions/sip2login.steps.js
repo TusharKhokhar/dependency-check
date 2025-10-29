@@ -25,25 +25,27 @@ let authData;
 let loginCreds;
 let groupIdFromAssignmentRule;
 
-const easyBookingGroupRules = {
-  Priority: 1,
-  Description: "Group assignment rules for SIP2 login",
-  EnableSessionSettings: true,
-  EasyBookingGroups: [
-    {
-      EasyBookingGroupName: "TBS Users Assignment",
-      IsActive: true,
-      Conditions: [
-        {
-          Field: "institutionId",
-          Condition: "equal",
-          Value: ["TBS"],
-          SingleMatch: true,
-        },
-      ],
-    },
-  ],
-};
+const groupAssignmentRules = [
+  {
+    SubGroups: [
+      {
+        Rules: [
+          {
+            Field: "institutionId",
+            Match: "single",
+            Condition: "equal_to",
+            Value: "TBS",
+          },
+        ],
+        Name: "TBS sub groups",
+        Active: true,
+      },
+    ],
+    Priority: 1,
+    GroupName: "TBS Users",
+    Enabled: true,
+  },
+];
 
 BeforeAll(async () => {
   authData = config.sip2Data;
@@ -123,17 +125,8 @@ Given("a request body with invalid barcode or pin for SIP2 login", function () {
 Given("a request body with valid credentials for SIP2 login", function () {});
 
 Given(
-  "an EasyBooking group is created with specific matching conditions for SIP2 login",
+  "an authentication provider is configured with GroupAssignmentRules, and it contains a group named 'TBS Users' with specific matching conditions in SIP2 login",
   async function () {
-    const { insertedId: groupId } = await addPermissionGroup(config.customerId, config.roleId)
-    await updateGroup(groupId, { 
-      GroupName: "TBS Users",
-      GroupType: "EasyBooking",
-      EasyBooking: easyBookingGroupRules 
-    })
-    
-    groupIdFromAssignmentRule = groupId
-
     const updateObj = {
       Sip2Config: {
         Host: authData.Sip2Config.Host,
@@ -143,6 +136,10 @@ Given(
       },
       Mappings: { ...authData.Mappings, GroupName: "" },
     };
+    const { insertedId: groupId } = await addPermissionGroup(config.customerId, config.roleId)
+    await updateGroup(groupId, { GroupName: "TBS Users" })
+    groupIdFromAssignmentRule = groupId
+    updateObj.GroupAssignmentRules = groupAssignmentRules;
     await updateAuthProvider(updateObj, authData._id);
   }
 );
@@ -193,14 +190,9 @@ Then(
 );
 
 Then(
-  "The system should evaluate the EasyBooking group conditions and assign the user to the matching group based on the defined rules",
-  async function () {
-    // Verify successful login response
-    expect(response.statusCode).to.equal(200);
+  "The user should be assigned to the {string} if rules matches for this group in SIP2 login",
+  async function (groupName) {
     const parsedResponse = JSON.parse(response.text);
-    expect(parsedResponse.data).to.have.property('hashId');
-    
-    // Verify user was assigned to the correct group based on EasyBooking group rules evaluation
     const { GroupID: userAssignedGroupId } = await findUserByHashId(
       parsedResponse.data.hashId,
       requestBody.orgId
@@ -214,42 +206,4 @@ Then(
 Then("The error should stored in AuditLogs collection for sip2 login",async function () {
   const sip2LoginAuditLogs = await getAuditLogsByType("Sip2Login")
   expect(sip2LoginAuditLogs.length).to.be.greaterThan(0)
-});
-
-Given('a valid SIP2 auth provider config with AllowUserCreation set to true', async function () {
-  const updateObj = {
-    AllowUserCreation: true,
-  };
-  await updateAuthProvider(updateObj, authData._id);
-});
-
-Given('a valid SIP2 auth provider config with AllowUserCreation set to false', async function () {
-  const updateObj = {
-    AllowUserCreation: false,
-  };
-  await updateAuthProvider(updateObj, authData._id);
-});
-
-Then('the system should create or update the user and return a hashId for SIP2 login', function () {
-  expect(response.statusCode).to.equal(200);
-  const parsedResponse = JSON.parse(response.text);
-  expect(parsedResponse).to.have.property('error', null);
-  expect(parsedResponse).to.have.property('data').that.is.an('object');
-  expect(parsedResponse.data).to.have.property('hashId').that.is.a('string');
-});
-
-Then('the system should process the request without creating or updating the user and return the validated user response for sip2', function () {
-  expect(response.statusCode).to.equal(200);
-  const parsedResponse = JSON.parse(response.text);
-  expect(parsedResponse).to.have.property('error', null);
-  expect(parsedResponse).to.have.property('data').that.is.an('object');
-  expect(parsedResponse.data).to.have.property('CustomerID');
-  expect(parsedResponse.data).to.have.property('TenantDomain');
-  expect(parsedResponse.data).to.have.property('PrimaryEmail');
-  expect(parsedResponse.data).to.have.property('Username');
-  expect(parsedResponse.data).to.have.property('Group');
-  expect(parsedResponse.data).to.have.property('FirstName');
-  expect(parsedResponse.data).to.have.property('LastName');
-  expect(parsedResponse.data).to.have.property('CardNumber');
-  expect(parsedResponse.data).to.have.property('Mobile');
 });

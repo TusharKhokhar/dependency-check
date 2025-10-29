@@ -1,25 +1,21 @@
-const { Groups, Devices, AuditLogs, AuthProviders, Customers} = require('../../models/collections')
+const { Groups, Devices, AuditLogs} = require('../../models/collections')
 const model = require('../../models/index')
 const { GraphQLError } = require('graphql')
-const axios  = require('axios')
 const {
   REQUIRED_INPUT_MISSING, REQUIRED_ID_MISSING, INVALID_STATUS, GROUP_ALREADY_EXIST, DISASSOCIATE_BEFORE_DELETION,
-  INVALID_DATA_ENTERED, UNAUTHORIZED,
-  AUTH_PROVIDER_NOT_CONFIGURED
+  INVALID_DATA_ENTERED, UNAUTHORIZED
 } = require('../../helpers/error-messages')
 const dot = require('dot-object')
 const { getObjectId: ObjectId } = require('../../helpers/objectIdConverter')
 const {
   formObjectIds, addCreateTimeStamp, getDatabase, addUpdateTimeStamp, getDatabaseOneCustomer,
-  getDatabaseForGetAllAPI, verifyUserAccess, ignoreOrderCompare,
-  utcDateGet
+  getDatabaseForGetAllAPI, verifyUserAccess, ignoreOrderCompare
 } = require('../../helpers/util')
 const { findReference } = require('../../helpers/referenceFinder')
 const { customerSecurity } = require('../../utils/validation')
-const {ResetQuotaBalance, orgAuthBaseUrl} = require("../../config/config");
+const {ResetQuotaBalance} = require("../../config/config");
 const {QUOTA_RESET_SUCCESS} = require("../../helpers/success-constants");
 const CustomLogger = require("../../helpers/customLogger");
-const { getDb } = require('../../config/dbHandler')
 const log = new CustomLogger()
 dot.keepArray = true
 
@@ -41,8 +37,6 @@ module.exports = {
         LMSRules,
         Policies,
         Quota,
-        EasyBooking,
-        EasyBookingGroupID,
         RulesID,
         UserID,
         CustomerID,
@@ -73,8 +67,6 @@ module.exports = {
         LMSRules: LMSRules,
         Policies: Policies,
         Quota: Quota,
-        EasyBooking: EasyBooking,
-        EasyBookingGroupID: EasyBookingGroupID,
         RulesID: RulesID,
         CustomerID: CustomerID,
         UserID: UserID,
@@ -119,9 +111,6 @@ module.exports = {
         if (GroupType === 'Print Configuration' && RoleType) {
           validateGroupTypeData = true
         }
-        if (GroupType === "EasyBooking") {
-          await validateEasyBookingPriority(Priority, CustomerID, collection);
-        }
         if (validateGroup) {
           throw new Error(GROUP_ALREADY_EXIST)
         } else if (validateGroupTypeData) {
@@ -154,9 +143,6 @@ module.exports = {
       }
       if (updateGroupInput.GroupType === 'Print Configuration' && updateGroupInput.RoleType) {
         validateGroupTypeData = true
-      }
-      if (updateGroupInput.GroupType === "EasyBooking") {
-        delete updateGroupInput.Priority;
       }
       if (validateGroup) {
         throw new Error(GROUP_ALREADY_EXIST)
@@ -254,11 +240,8 @@ module.exports = {
             }
           })
         } else {
-          const deleteResult = await db.collection(Groups).updateOne({ _id: ObjectId.createFromHexString(groupId) }, { $set: { IsDeleted: IsDeleted, DeletedBy: ObjectId.createFromHexString(context.data._id), DeletedAt: new Date() } })
-          if (deleteResult.modifiedCount > 0) {
-            await model.groups.reArrangeEasyBookingPriorities(groupId, db, customerId, context)
-          }
-          return response;
+          await db.collection(Groups).updateOne({ _id: ObjectId.createFromHexString(groupId) }, { $set: { IsDeleted: IsDeleted, DeletedBy: ObjectId.createFromHexString(context.data._id), DeletedAt: new Date() } })
+          return response
         }
       } catch (error) {
         throw new Error(error.message)
@@ -347,205 +330,12 @@ module.exports = {
       } catch (error) {
         throw new Error(error.message)
       }
-    },
-
-    async updateEasyBookingGroupPriorities (_, { groupIds, customerId }, context) {
-      log.lambdaSetup(context, 'groups', 'updateEasyBookingGroupPriorities')
-      try {
-        if (!groupIds || groupIds?.length === 0) {
-          throw new GraphQLError(REQUIRED_INPUT_MISSING, {
-            extensions: {
-              code: '121'
-            }
-          })
-        }
-        if (!customerId) {
-          throw new GraphQLError(REQUIRED_ID_MISSING, {
-            extensions: {
-              code: '121'
-            }
-          })
-        }
-        verifyUserAccess(context, customerId)
-        const db = await getDb();
-        const allEasyBookingExistingGroups = await db
-          .collection(Groups)
-          .find(
-            {
-              CustomerID: ObjectId.createFromHexString(customerId),
-              GroupType: "EasyBooking",
-              IsDeleted: false,
-            },
-            { projection: { _id: 1 } }
-          )
-          .toArray();
-
-        // Convert existing group IDs to strings for comparison
-        const existingGroupIds = allEasyBookingExistingGroups.map(group => group._id.toString())
-        
-        // Validate that input groupIds length matches existing groups length
-        if (groupIds.length !== allEasyBookingExistingGroups.length) {
-          throw new GraphQLError(`Number of provided groups does not match existing EasyBooking groups count`, {
-            extensions: {
-              code: '400'
-            }
-          })
-        }
-        
-        // Validate that all input groupIds exist in the existing groups
-        const invalidGroupIds = groupIds.filter(id => !existingGroupIds.includes(id))
-        if (invalidGroupIds.length > 0) {
-          throw new GraphQLError(`Some selected groups are no longer valid`, {
-            extensions: {
-              code: '404'
-            }
-          })
-        }
-        
-        // Validate that all existing groups are included in the input
-        const missingGroupIds = existingGroupIds.filter(id => !groupIds.includes(id))
-        if (missingGroupIds.length > 0) {
-          throw new GraphQLError(`Some groups are missing in request`, {
-            extensions: {
-              code: '400'
-            }
-          })
-        }
-        
-        const bulkOperations = groupIds.map((groupId, index) => ({
-          updateOne: {
-            filter: { 
-              _id: ObjectId.createFromHexString(groupId),
-              CustomerID: ObjectId.createFromHexString(customerId)
-            },
-            update: { 
-              $set: { 
-                Priority: index + 1,
-                UpdatedBy: ObjectId.createFromHexString(context.data._id),
-                UpdatedAt: utcDateGet()
-              }
-            }
-          }
-        }))
-        
-        await db.collection(Groups).bulkWrite(bulkOperations)
-        
-        return {
-          message: "Successfully updated priorities",
-          statusCode: 200
-        }
-      } catch (error) {
-        log.error("error in updateEasyBookingGroupPriorities ***", error)
-        throw new Error(error?.message || error);
-      }
-    },
-
-    async testBookingGroupRules (_, { testBookingGroupRulesInput, customerId }, context) {
-      log.lambdaSetup(context, 'groups', 'testBookingGroupRules')
-      try {
-        const { AuthID, BarCode, Pin} = testBookingGroupRulesInput
-
-        if (!AuthID) {
-          throw new GraphQLError(REQUIRED_INPUT_MISSING, {
-            extensions: {
-              code: '121'
-            }
-          })
-        }
-        if (!customerId) {
-          throw new GraphQLError(REQUIRED_ID_MISSING, {
-            extensions: {
-              code: '121'
-            }
-          })
-        }
-        verifyUserAccess(context, customerId)
-        const db = await getDb();
-        const customer = await db
-          .collection(Customers)
-          .findOne(
-            {
-              _id: ObjectId.createFromHexString(customerId),
-              IsDeleted: false,
-            },
-          )
-
-        if(!customer){
-          throw new GraphQLError(CUSTOMER_NOT_FOUND, {
-            extensions: {
-              code: '185'
-            }
-          })
-        }
-
-        const authProvoder = await db
-          .collection(AuthProviders)
-          .findOne(
-            {
-              _id: ObjectId.createFromHexString(AuthID),
-              CustomerID: ObjectId.createFromHexString(customerId),
-              IsDeleted: false,
-            },
-        )
-
-        if(!authProvoder){
-          throw new GraphQLError(AUTH_PROVIDER_NOT_CONFIGURED, {
-            extensions: {
-              code: '185'
-            }
-          })
-        }
-
-        // const basePath = orgAuthBaseUrl
-        const basePath = "http://localhost:3001"
-        const body = {
-          orgId: authProvoder.OrgID,
-          authId: authProvoder._id,
-          EasybookingRuleTest: true  // Add the flag to indicate this is a test
-        };
-
-        if (authProvoder.AuthProvider === "ldap") {
-          body["username"] = BarCode;
-          body["password"] = Pin;
-        } else if (authProvoder.AuthProvider === "innovative" || authProvoder.AuthProvider === "sip2") {
-          body["barcode"] = BarCode;
-          body["pin"] = Pin;
-        } else if (authProvoder.AuthProvider === "sirsi" || authProvoder.AuthProvider === "polaris") {
-          body["barcode"] = BarCode;
-          body["password"] = Pin;
-        } 
-                
-        else {
-          throw new GraphQLError(INVALID_AUTH_PROVIDER, {
-            extensions: {
-              code: '185'
-            }
-          })
-        }
-        console.log("basePath ==>> ", basePath);
-        
-        const userAuthData = await getUserAuthData(basePath, body, customer.Tier);
-      
-        console.log("userAuthData =>>>",userAuthData);
-        const reportData = await db.collection("EasybookingRuleTestLogs").findOneAndDelete({HashID: userAuthData?.data?.hashId})
-        console.log("reportData =>>>", reportData);
-        
-        
-        return {
-          message: "Successfully tested booking group rules",
-          statusCode: 200,
-          data: reportData,
-        };
-      } catch (error) {
-        log.error("error in updateEasyBookingGroupPriorities ***", error)
-        throw new Error(error?.message || error);
-      }
     }
 
   },
 
   Query: {
-    async getGroups (_, { paginationInput, customerIds, groupTypes }, context) {
+    async getGroups (_, { paginationInput, customerIds }, context) {
       log.lambdaSetup(context, 'groups', 'getGroups')
       let {
         pattern,
@@ -577,8 +367,7 @@ module.exports = {
         limit,
         sortKey,
         customerIds,
-        collection,
-        groupTypes
+        collection
       }).then(groupList => {
         // groupList.total = groupList.total.length
         return groupList
@@ -762,54 +551,3 @@ const updateAllUsersPrinterConfigurations = async (printConfigurationGroupID, db
     console.error('error****',error)
   }
 }
-
-const validateEasyBookingPriority = async (priority, customerId, collection) => {
-  if (!priority || priority <= 0) {
-    throw new Error("Invalid Priority value");
-  }
-  
-  const checkExistingPriorityGroup = await collection.findOne({
-    GroupType: "EasyBooking",
-    CustomerID: ObjectId.createFromHexString(customerId),
-    IsDeleted: false,
-    Priority: priority,
-  });
-  
-  if (checkExistingPriorityGroup) {
-    throw new Error(
-      "Another EasyBooking group with the same priority already exists."
-    );
-  }
-  
-  const allExistingPriorityGroup = await collection
-    .find({
-      GroupType: "EasyBooking",
-      CustomerID: ObjectId.createFromHexString(customerId),
-      IsDeleted: false,
-    })
-    .toArray();
-    
-  if (priority > allExistingPriorityGroup.length + 1) {
-    throw new Error("Invalid Priority value");
-  }
-};
-
-const getUserAuthData = async (resourceURL, body, tier) => {
-  return new Promise((resolve, reject) => {
-    const apiURL = `${resourceURL}/auth/login`;
-    const config = {
-      headers: {
-        tier,
-      },
-    };
-    axios
-      .post(apiURL, body, config)
-      .then((response) => {
-        resolve(response.data);
-      })
-      .catch(async (error) => {
-        log.info('Error: ', error)
-        reject(error.response?.data?.error || error)
-      });
-  });
-};

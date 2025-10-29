@@ -73,7 +73,7 @@ module.exports.braintreeValidator = async (req, res, next) => {
       Email: user.PrimaryEmail ? user.PrimaryEmail : null,
       Amount: Number(amount),
       Currency: currencyIsoCode,
-      Status: (status === "submitted_for_settlement" || status === "authorized") ? "succeeded" : "failed",
+      Status: status,
       SellerMessage: processorResponseText,
       City: city,
       Country: country,

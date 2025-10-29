@@ -15,7 +15,7 @@ const { getCustomer } = require("../../../memoryDb/customer");
 const { addGroup, addQuotaGroup, addPermissionGroup } = require("../../../memoryDb/group");
 const { addRole } = require("../../../memoryDb/roles");
 const { addProvider, getAuthProviderById, updateAuthProvider } = require("../../../memoryDb/provider");
-const {addAuthProvider, AddAuthProvider, UpdateAuthProvider, addAuthProviderWithAdditionalParameters, addAuthProviderWkp} = require("../mutations/authProvider.mutation");
+const {addAuthProvider, AddAuthProvider, UpdateAuthProvider, addAuthProviderWithAdditionalParameters} = require("../mutations/authProvider.mutation");
 const {getEvent} = require("../mocks/event");
 
 let server;
@@ -37,8 +37,8 @@ server = request(config.url);
 
 Before("@authProviders", async () => {
   await addSAMLMetaData()
+  const customerData = await getCustomer()
   customerID = config.customerId
-  const customerData = await getCustomer(customerID)
   const { insertedId: groupId } = await addGroup(customerData._id);
   defaultGroup = groupId
   const { insertedId: roleId } = await addRole(customerData._id);
@@ -498,30 +498,4 @@ Then("the response should include the updated AuthProvider data with Custom para
   expect(responseData).to.have.property("CustomFields");
   expect(responseData).to.have.property("CustomFieldsEnabled");
   expect(responseData.CustomFieldsEnabled).to.equal(true);
-})
-
-// Scenario: add wkp type AuthProvider successfully
-
-Given("the wkp type AuthProvider with valid input", function () {
-  addAuthProviderWkp.variables.addAuthProviderInput.AuthProvider = "wkp";
-  return;
-});
-
-When("the request is sent to wkp addAuthProvider API", async function () {
-  const event = getEvent(addAuthProviderWkp)
-  const context = {data : {customerIdsStrings : [customerID]}};
-  try {
-    const response = await handler(event, context);
-    response.body = JSON.parse(response.body);
-    globalResponse.response = response;
-    console.log("Response: ",response.body);
-  } catch (error) {
-    console.error("Error in Lambda Handler:", error);
-    throw error;
-  }
-});
-
-Then("the response should be successful for wkp AuthProvider", function () {
-  console.log("Response for wkp AuthProvider: ",globalResponse.response.body.data);
-  expect(globalResponse.response.body.data.addAuthProviderWkp).to.not.be.null;
 })
