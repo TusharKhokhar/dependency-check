@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'LambdaEC2StopPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:StopInstances'
+                Resource: '*'
+
+  StopEC2LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          const { EC2Client, DescribeInstancesCommand, StopInstancesCommand } = require('@aws-sdk/client-ec2');
+
+          const ec2Client = new EC2Client();
+
+          exports.handler = async (event) => {
+              try {
+                  const data = await ec2Client.send(new DescribeInstancesCommand({}));
+                  const instances = data.Reservations.reduce((acc, reservation) => {
+                      return acc.concat(reservation.Instances.map(instance => instance.InstanceId));
+                  }, []);
+                  if (instances.length > 0) {
+                      await ec2Client.send(new StopInstancesCommand({ InstanceIds: instances }));
+                      console.log(`Stopped instances: ${instances.join(', ')}`);
+                  } else {
+                      console.log('No instances to stop.');
+                  }
+              } catch (error) {
+                  console.error(error);
+              }
+          };
+      Runtime: 'nodejs18.x'
+      Timeout: 30
+
+  StopEC2DailyRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      ScheduleExpression: 'cron(30 19 * * ? *)'  # 1 AM IST corresponds to 19:30 UTC (IST is UTC+5:30)
+      Targets:
+        - Arn: !GetAtt StopEC2LambdaFunction.Arn
+          Id: 'StopEC2InstancesDaily'
+
+  PermissionForEventsToInvokeLambda:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref StopEC2LambdaFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt StopEC2DailyRule.Arn

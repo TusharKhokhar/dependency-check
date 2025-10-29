@@ -1,0 +1,278 @@
+---
+swagger: '2.0'
+info:
+  description: 'partner APIs documentation'
+  version: 1.0.6
+  title: ePRINTit SAAS
+host: api.eprintitsaas.com/partner/
+schemes:
+  - https
+securityDefinitions:
+  basicAuth:
+    type: basic
+    description: HTTP Basic Authentication. Works over `HTTP` and `HTTPS`
+
+paths:
+  "/jobs":
+    get:
+      tags:
+        - Customers
+      security:
+        - basicAuth: [ ]
+      summary: api to get print jobs
+      description: ''
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: releaseCode
+          type: string
+          required: false
+        - in: query
+          name: guestName
+          type: string
+          required: false
+        - in: query
+          name: email
+          type: string
+          required: false
+        - in: query
+          name: cardNumber
+          type: string
+          required: false
+        - in: query
+          name: userName
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/send":
+    post:
+      tags:
+        - Customers
+      security:
+        - basicAuth: [ ]
+      summary: api to send the print jobs
+      description: ''
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/SendPrintJob"
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/job":
+    delete:
+      tags:
+        - Customers
+      security:
+        - basicAuth: [ ]
+      summary: api to delete the print jobs
+      description: ''
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/DeletePrintJob"
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/validateUser":
+    post:
+      tags:
+        - Customers
+      security:
+        - basicAuth: [ ]
+      summary: api to validate a user
+      description: API to validate user by one of the customer configured identity providers (sirsi, innovative, ldap, polaris, internal)
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/ValidateUser"
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/users/import":
+    post:
+      tags:
+        - Users
+      security:
+        - basicAuth: []
+      summary: api to bulk add users
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/UserImportSignUp"
+      responses:
+        '200':
+          description: successful operation
+  "/users":
+    delete:
+      tags:
+        - Users
+      security:
+        - basicAuth: []
+      summary: api to bulk delete users
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/UserDeleteModel"
+      responses:
+        '200':
+          description: successful operation
+  "/users/status":
+    put:
+      tags:
+        - Users
+      security:
+        - basicAuth: []
+      summary: api to bulk enable/diable users
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/UserEnableDisableModel"
+      responses:
+        '200':
+          description: successful operation
+  "/users/groups":
+    put:
+      tags:
+        - Users
+      security:
+        - basicAuth: []
+      summary: api to bulk update groups of the users
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/UserGroupUpdateModel"
+      responses:
+        '200':
+          description: successful operation
+definitions:
+  SendPrintJob:
+    type: object
+    properties:
+      fileNames:
+        type: array
+        items:
+          type: string
+      device:
+        type: string
+      releaseCode:
+        type: string
+      sessionId:
+        type: string
+  UserImportSignUp:
+    type: object
+    properties:
+      users:
+        type: array
+        items:
+          type: object
+          properties:
+            userName:
+              type: string
+            emailAddress:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+            groupName:
+              type: string
+            enable:
+              type: boolean
+  UserDeleteModel:
+    type: object
+    properties:
+      userNames:
+        type: array
+        items:
+          type: string
+  UserEnableDisableModel:
+    type: object
+    properties:
+      userNames:
+        type: array
+        items:
+          type: string
+      enable:
+        type: boolean
+  UserGroupUpdateModel:
+    type: object
+    properties:
+      userNames:
+        type: array
+        items:
+          type: string
+      newGroupName:
+        type: string
+      existingGroupName:
+        type: string
+  DeletePrintJob:
+    type: object
+    properties:
+      fileNames:
+        type: array
+        items:
+          type: string
+      releaseCode:
+        type: string
+  ValidateUser:
+    type: object
+    properties:
+      userName:
+        type: string
+      password:
+        type: string
+      identityProvider:
+        type: string
+  ApiResponse:
+    type: object

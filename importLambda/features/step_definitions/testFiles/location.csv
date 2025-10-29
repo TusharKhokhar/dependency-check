@@ -1,0 +1,2 @@
+Label,Location,Description,Address,OpenHoursOne,ClosingHoursOne,DayOne,OpenHoursTwo,ClosingHoursTwo,DayTwo,OpenHoursThree,ClosingHoursThree,DayThree,OpenHoursFour,ClosingHoursFour,DayFour,OpenHoursFive,ClosingHoursFive,DayFive,OpenHoursSix,ClosingHoursSix,DaySix,OpenHoursSeven,ClosingHoursSeven,DaySeven
+Location 001,abc,saket nagar,bhopal,madhya pradesh,india,462026,9:00 AM,9:00 PM,Monday,9:00 AM,9:00 PM,Tuesday,9:00 AM,9:00 PM,Wednesday,9:00 AM,9:00 PM,Thursday,9:00 AM,9:00 PM,Friday,9:00 AM,9:00 PM,Saturday,9:00 AM,9:00 PM,Sunday

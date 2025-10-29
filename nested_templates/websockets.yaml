@@ -1,0 +1,471 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Template to deploy aws websockets with lambda function
+
+Globals:
+  Api:
+    Cors:
+      AllowOrigin: "'*'"
+
+Parameters:
+  BucketStage:
+    Type: String
+  MongoDBConnection:
+    Type: String
+  MongoDBReadWriteAccess:
+    Type: String
+  DatabaseName:
+    Type: String
+  StageDeployment:
+    Type: String
+  DomainName:
+    Type: String
+  Stage:
+    Type: String
+  BaseDomainName:
+    Type: String
+  RegionType:
+    Type: String
+  Environment:
+    Type: String
+    Default: server
+
+Resources:
+
+  JSReportlamdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"              
+      Path: /
+      Policies:
+        - PolicyName: tenantBucketInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - s3:Get*
+                - s3:Put*
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/Reports/*'
+                - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}-converted/Reports/*'
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - lambda:InvokeFunction
+              Effect: Allow
+              Resource:
+                - "*"
+        - PolicyName: websocketPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - execute-api:Invoke
+                  - execute-api:ManageConnections
+                Resource: arn:aws:execute-api:*:*:*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  JSReportsBucketAccessPolicyRole:
+    Type: AWS::IAM::Role
+    DependsOn: JSReportlamdaRole
+    Properties:
+      RoleName: !Sub "cloud-saas-api-${AWS::Region}-JSReportsBucketAccessPol"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt JSReportlamdaRole.Arn
+            Action:
+              - 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"              
+      Path: /
+      Policies:
+        - PolicyName: tenantBucketInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - s3:Get*
+                - s3:Put*
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/Reports/*'
+                - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}-converted/Reports/*'
+                - !Sub arn:aws:s3:::*
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - lambda:InvokeFunction
+              Effect: Allow
+              Resource:
+                - "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # JSReportsLayer:
+  #   Type: AWS::Serverless::LayerVersion
+  #   Properties:
+  #     LayerName: JSReportsLayer
+  #     Description: jsreports and other utility dependencies.
+  #     ContentUri: ../jsReports/layer.zip
+  #     RetentionPolicy: Delete
+  #   Metadata:
+  #     BuildMethod: nodejs20.x
+
+  jsReports:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      FunctionName: !Sub "cloud-saas-api-${AWS::Region}-jsReports"
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 1024
+      Timeout: 120
+      CodeUri: ../jsReports/lambda.zip
+      Role: !GetAtt JSReportlamdaRole.Arn
+      Description: A Lambda function that return data returned from js reports
+      Layers:
+        # - !Ref JSReportsLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:JsLayerSaas:1"
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          awsAccountNumber: !Ref AWS::AccountId
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          roleName: !Ref JSReportsBucketAccessPolicyRole
+          domainName: !Ref DomainName
+
+  generateReportsDataLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: generateReportsLayer
+      Description: other utility dependencies.
+      ContentUri: ../generateReportData/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  generateReports:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      FunctionName: !Sub "cloud-saas-api-${AWS::Region}-generateReports"
+      CodeUri: ../generateReportData/
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 512
+      Timeout: 120
+      Description: A Lambda function that return reports data
+      Role: !GetAtt JSReportlamdaRole.Arn
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          awsAccountNumber: !Ref AWS::AccountId
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Ref MongoDBReadWriteAccess
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref StageDeployment ] ]
+          domainName: !Ref DomainName
+          functionName: !Ref jsReports
+          environment: !Ref Environment
+          stage: !Ref Stage
+          roleName: !Ref JSReportsBucketAccessPolicyRole
+      Layers:
+        - !Ref generateReportsDataLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  WebSocketConnection:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: WebSocketConnection
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketConnection
+      RouteKey: $connect
+      AuthorizationType: NONE
+      OperationName: ConnectRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref ConnectInteg
+  ConnectInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketConnection
+      Description: Connect Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebsocketFunction.Arn}/invocations
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketConnection
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      OperationName: DisconnectRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref DisconnectInteg
+  DisconnectInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketConnection
+      Description: Disconnect Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebsocketFunction.Arn}/invocations
+  SendRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketConnection
+      RouteKey: sendmessage
+      AuthorizationType: NONE
+      OperationName: SendRoute
+      Target: !Join
+        - '/'
+        - - 'integrations'
+          - !Ref SendInteg
+  SendInteg:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketConnection
+      Description: Send Integration
+      IntegrationType: AWS_PROXY
+      IntegrationUri:
+        Fn::Sub:
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebsocketFunction.Arn}/invocations
+  Deployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+      - ConnectRoute
+      - SendRoute
+      - DisconnectRoute
+    Properties:
+      ApiId: !Ref WebSocketConnection
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: Prod
+      Description: Prod Stage
+      DeploymentId: !Ref Deployment
+      ApiId: !Ref WebSocketConnection
+
+
+  websocketLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"            
+      Path: /
+      Policies:
+        - PolicyName: websocketPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'execute-api:ManageConnections'
+                Resource:
+                  - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketConnection}/*'
+        - PolicyName: invokeLambda
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: "*"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+
+  AssumeRoleSTS:
+    Type: AWS::IAM::Role
+    DependsOn: websocketLambdaFunctionRole
+    Properties:
+      RoleName: !Sub "cloud-saas-api-${AWS::Region}-WebSocketAP-AssumeRoleSTS"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt websocketLambdaFunctionRole.Arn
+            Action:
+              - 'sts:AssumeRole'
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: iotPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iot:*
+                Resource: "*"
+        - PolicyName: invokeLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+        - PolicyName: websocketPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - execute-api:Invoke
+                  - execute-api:ManageConnections
+                Resource: arn:aws:execute-api:*:*:*
+
+
+  WebsocketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../websockets/
+      Handler: app.handler
+      MemorySize: 256
+      Tracing: Active
+      Runtime: nodejs20.x
+      Layers:
+        - !Ref DependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Role: !GetAtt websocketLambdaFunctionRole.Arn
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          awsAccountNumber: !Ref AWS::AccountId
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Ref MongoDBReadWriteAccess
+          roleName: !Ref AssumeRoleSTS
+          functionName: !Ref generateReports
+          domainName: !Ref DomainName
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref StageDeployment ] ]
+
+  PublishMessagePermission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - WebSocketConnection
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WebsocketFunction
+      Principal: apigateway.amazonaws.com
+
+  DependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: dependencies-layer-websockets
+      Description: websocket and other utility dependencies.
+      ContentUri: ../websockets/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+
+Outputs:
+
+  WebsocketFunctionArn:
+    Description: "PublishMessage function ARN"
+    Value: !GetAtt WebsocketFunction.Arn
+
+  WebSocketURI:
+    Description: "The WSS Protocol URI to connect to"
+    Value: !Join [ '', [ 'wss://', !Ref WebSocketConnection, '.execute-api.',!Ref 'AWS::Region','.amazonaws.com/',!Ref 'Stage' ] ]
+
+  WebSocketRefId:
+    Description: "API ref id for the websocket api gateway"
+    Value: !Ref WebSocketConnection

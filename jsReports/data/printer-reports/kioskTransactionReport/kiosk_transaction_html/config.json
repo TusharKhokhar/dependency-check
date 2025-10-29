@@ -1,0 +1,17 @@
+{
+    "name": "kiosk_transaction_html",
+    "engine": "handlebars",
+    "recipe": "html",
+    "data": {
+        "shortid": "Gf-M7kOCB"
+    },
+    "shortid": "hfX0Q-RPR",
+    "creationDate": {
+        "$$date": 1699595653724
+    },
+    "modificationDate": {
+        "$$date": 1718715866814
+    },
+    "_id": "KhtFNaHhWLAtXOrq",
+    "$entitySet": "templates"
+}

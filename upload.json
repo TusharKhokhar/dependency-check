@@ -1,0 +1,88 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "2016-10-21T17:26:28Z",
+    "title": "ApiNameFinal"
+  },
+  "paths": {
+    "/s3": {
+      "get": {
+        "parameters": [{
+          "name" : "Content-Type",
+          "in" : "header",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        },
+          {
+            "name": "key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "headers" : {
+              "Content-Type" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Empty"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500 response"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "credentials":  "arn:aws:iam::377667345683:role/directS3ApiRole",
+          "responses": {
+            "default": {
+              "statusCode": "500"
+            },
+            "2\\d{2}": {
+              "statusCode": "200",
+              "contentHandling": "CONVERT_TO_BINARY",
+              "responseParameters": {
+                "method.response.header.Content-Type": "integration.response.header.Content-Type"
+              }
+            }
+          },
+          "requestParameters": {
+            "integration.request.path.key": "method.request.querystring.key",
+            "integration.request.header.Content-Type": "method.request.header.Content-Type"
+          },
+          "uri": "arn:aws:apigateway:us-east-1:s3:path/{key}",
+          "passthroughBehavior": "when_no_match",
+          "httpMethod": "GET",
+          "type": "aws"
+        }
+      }
+    }
+  },
+  "x-amazon-apigateway-binary-media-types": [
+    "application/octet-stream",
+    "image/jpeg",
+    "image/png"
+  ],
+  "components": {
+    "schemas": {
+      "Empty": {
+        "type": "object",
+        "title": "Empty Schema"
+      }
+    }
+  }
+}

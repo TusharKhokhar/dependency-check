@@ -1,0 +1,146 @@
+version: 0.2
+# Buildspec Reference Doc: https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html#build-spec-ref-syntax
+
+phases:
+  install:
+    commands:
+      - npm install snyk@latest -g
+      - echo "Snyk Iac analysis...."
+      - snyk config set api=76bb344f-e7e6-412c-984c-dfacbd2f7527
+      - snyk iac test ./primary-template.yaml --org=eprintit-tbs --severity-threshold=medium
+      - snyk iac test ./secondary-template.yaml --org=eprintit-tbs --severity-threshold=medium
+      - echo "Snyk code analysis...."
+      - snyk ignore --file-path=orgAuth/helpers/error-messages.js --path=./.snyk
+      - snyk ignore --file-path=publicAuth/helpers/error-messages.js --path=./.snyk
+      - snyk ignore --file-path=graphql/helpers/error-messages.js --path=./.snyk
+      - snyk ignore --file-path=graphql/helpers/success-constants.js --path=./.snyk
+      - snyk ignore --file-path=orgAuth/helpers/success-constants.js --path=./.snyk
+      - snyk ignore --file-path=publicAuth/helpers/success-constants.js --path=./.snyk
+      - snyk ignore --file-path=logFileConversionError/config/config.js --path=./.snyk
+      - snyk ignore --file-path=jsReports/index.js --path=./.snyk
+      - snyk ignore --file-path=generateReportData/config/config.js --path=./.snyk
+      - snyk ignore --file-path=emailEventFunction/config.js --path=./.snyk
+      - snyk ignore --file-path=graphql/features --path=./.snyk
+      - snyk ignore --file-path=memoryDb --path=./.snyk
+      - snyk code test --org=eprintit-tbs --severity-threshold=medium
+      - echo "[Install phase]"
+      # uncomment these lines if you want to invalidate old login
+      #      - echo -e "\n\n\n" | ssh-keygen -t rsa -b 4096 -N "" -m PEM -f jwtRS256.key
+      #      - openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
+      #      - cp -v jwtRS256.key graphql/config/
+      #      - cp -v jwtRS256.key.pub graphql/config/
+      #      - cp -v jwtRS256.key publicAuth/config/
+      #      - cp -v jwtRS256.key.pub publicAuth/config/
+      #      - cp -v jwtRS256.key websockets/config/
+      #      - cp -v jwtRS256.key.pub websockets/config/
+      #      - cp -v jwtRS256.key orgAuth/config/
+      #      - cp -v jwtRS256.key.pub orgAuth/config/
+      #------ till here----------
+      - cd pythonImgConversion/dependencies/python
+      - python -m pip install -r requirements.txt -t ./
+      - ls
+      - pwd
+      - cd ../../../
+      - cd awsLambdaLayerV2/dependencies/nodejs
+      - n 20.12.2
+      - npm i
+      - cd ../../../
+      - cd graphql/dependencies/nodejs
+#      - n 20.12.2
+      - npm i --omit=dev
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=graphql
+      - cd node_modules
+      - rm -rf aws-sdk
+      - cd ..
+      - cd ../../../jsReports/
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=jsReports
+      - cd node_modules
+      - rm -rf aws-sdk
+      - cd ..
+      - ls
+      - node createLambdaLayer.js
+      - ls
+      - node createLambdaPackage.js
+      - ls
+      - pwd
+      - cd ../
+      - cd publicAuth/dependencies/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=publicAuth
+      - cd node_modules
+      - rm -rf aws-sdk
+      - cd ..
+      - ls
+      - pwd
+      - cd ../../../
+      - cd orgAuth/dependencies/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=orgAuth
+      - cd node_modules
+      - rm -rf aws-sdk
+      - cd ..
+      - ls
+      - pwd
+      - cd ../../../
+      - cd generateReportData/dependencies/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=generateReportData
+      - cd node_modules
+      - rm -rf aws-sdk
+      - cd ..
+      - ls
+      - pwd
+      - cd ../../../
+      - cd websockets/dependencies/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=websockets
+      - ls
+      - pwd
+      - cd ../../../
+      - cd emailEventFunction/dependencies/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=emailEventFunction
+      - ls
+      - pwd
+      - cd ../../../
+      - cd lambdaDependencies/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=lambdaDependencies
+      - ls
+      - pwd
+      - cd ../../
+      - cd translationLayer/nodejs
+      - npm i
+      - snyk monitor --strict-out-of-sync=false --project-name=cloud-saas-api --target-reference=translationLayer
+      - ls
+      - pwd
+      - cd ../../
+  pre_build:
+    commands:
+  build:
+    commands:
+      - echo "Starting SAM packaging `date` in `pwd`"
+  post_build:
+    commands:
+      - echo "SAM packaging completed on `date`"
+      - aws cloudformation package --template-file primary-template.yaml --s3-bucket $BUILD_OUTPUT_BUCKET --output-template-file packagedprimary.yaml --region us-east-1
+      - aws cloudformation package --template-file secondary-template.yaml --s3-bucket $US_WEST_2_ARTIFACT_BUCKET --output-template-file packagedsecondary.yaml --region us-west-2
+
+
+##################################
+# Build Artifacts to be uploaded #
+##################################
+
+artifacts:
+  files:
+    - packagedprimary.yaml
+    - packagedsecondary.yaml
+  discard-paths: yes
+
+#  aws cloudformation update-stack --stack-name bigxpose-pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_NAMED_IAM
+#  aws cloudformation update-stack --stack-name cloud-saas-dev-api-pipeline--template-body file://pipeline-api.yaml --capabilities CAPABILITY_NAMED_IAM
+#  aws cloudformation update-stack --stack-name cloud-saas-qa-ui-pipeline --template-body file://pipeline-ui.yaml --capabilities CAPABILITY_NAMED_IAM
+#  aws cloudformation update-stack --stack-name cloud-saas-qa-mobile-pipeline --template-body file://pipeline-mobile.yaml --capabilities CAPABILITY_NAMED_IAM
+#  aws cloudformation create-stack --stack-name cloud-saas-qa-pwa-pipeline --template-body file://pipeline-pwa.yaml --capabilities CAPABILITY_NAMED_IAM
+#  aws cloudformation update-stack --stack-name cloud-saas-qa-pwa-pipeline --template-body file://pipeline-pwa.yaml --capabilities CAPABILITY_NAMED_IAM

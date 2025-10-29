@@ -1,0 +1,17 @@
+{
+    "name": "value_added_html",
+    "engine": "handlebars",
+    "recipe": "html",
+    "data": {
+        "shortid": "PsdDOrcfu"
+    },
+    "shortid": "pLREMISb_",
+    "creationDate": {
+        "$$date": 1699533446851
+    },
+    "modificationDate": {
+        "$$date": 1718715796819
+    },
+    "_id": "IivRZx5eJotaLFjC",
+    "$entitySet": "templates"
+}

@@ -1,0 +1,64 @@
+Return-Path: <vijay.ambaliya890@gmail.com>
+Received: from mail-pg1-f176.google.com (mail-pg1-f176.google.com [209.85.215.176])
+ by inbound-smtp.us-east-1.amazonaws.com with SMTP id i2d1lrfiise40tmv2enne5o8oojp9n7akakjm181
+ for admin@eprintitsaas.org;
+ Thu, 30 May 2024 05:33:40 +0000 (UTC)
+X-SES-Spam-Verdict: PASS
+X-SES-Virus-Verdict: PASS
+Received-SPF: pass (spfCheck: domain of _spf.google.com designates 209.85.215.176 as permitted sender) client-ip=209.85.215.176; envelope-from=vijay.ambaliya890@gmail.com; helo=mail-pg1-f176.google.com;
+Authentication-Results: amazonses.com;
+ spf=pass (spfCheck: domain of _spf.google.com designates 209.85.215.176 as permitted sender) client-ip=209.85.215.176; envelope-from=vijay.ambaliya890@gmail.com; helo=mail-pg1-f176.google.com;
+ dkim=pass header.i=@gmail.com;
+ dmarc=pass header.from=gmail.com;
+X-SES-RECEIPT: AEFBQUFBQUFBQUFGL0Qyd3NMU2NtNmRsaFR1UEp5cU4yQlBCYmpZR0xjeWd0dkJudTV3UWNGNGFVdTJCMWNwWXhldkdPL0RtLzMyK3NWc3NienQ3cmV1ekZkN1dpOWRvWDB2alhyK0pNaVZweVY5RFhOTGtzdG1YWGtGWXNFMGJTYlg2cXRFUWR1TVh3OC9uNEZxNGViUytUTGF1aW1jYTZST1ZrdXB5emgxa09MVk5ybTVnSS84SUVTblRmY0NoaHpiZ1Q1U2sxODBVbUJTam50eHZ5UnV2WnMvVUs2WVZ1bWE0UHllVUhUTy9KL2tKSWNybCt6akF0SGxzRmV3cExWL1hHdjE4R1Z1eXpwQ29xUVJ6Vm5zV1VuMWQ0OExSTldmUU5IOHp2bGhKVVVUQUd2aXVQK3c9PQ==
+X-SES-DKIM-SIGNATURE: a=rsa-sha256; q=dns/txt; b=JBxF2kv0zCBn0iRvA72EbZpSuLhUYHLH/E7OL/OdGa730GjGhWFbBSkxM1jx/g8DcIx6ej6j0nPcQDybkcpImDkSvhgEbImvjMB5hyZ0Q4qQI1h4pZHMquc/3F9846nk90vPsVW+TjhUrUn+Hu9lk0gIW0sMP71JMPkQA/dITQ0=; c=relaxed/simple; s=ug7nbtf4gccmlpwj322ax3p6ow6yfsug; d=amazonses.com; t=1717047220; v=1; bh=gO8Nf2F8o4ZflAjCXxBjFbbG03SmjS0Jmx7HQpsC/vo=; h=From:To:Cc:Bcc:Subject:Date:Message-ID:MIME-Version:Content-Type:X-SES-RECEIPT;
+Received: by mail-pg1-f176.google.com with SMTP id 41be03b00d2f7-6818eea9c3aso375029a12.1
+        for <admin@eprintitsaas.org>; Wed, 29 May 2024 22:33:40 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1717047219; x=1717652019; darn=eprintitsaas.org;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=gO8Nf2F8o4ZflAjCXxBjFbbG03SmjS0Jmx7HQpsC/vo=;
+        b=Nx75qwbjGamvNTWZUJYlIdwjnbu9qLDt+lHw3hf2HKOKnp+gZLI9XsBIWtHlwR6VNv
+         Thqtaez5bAJbbuG06vJD8xlsxD4IiI664Xp0cr6C6zizgsLrPNqkxWtyKRD4qZCVFQbB
+         MLwu18goz00FnkYwYwRHP9xSrhyu7bIInnQLbEumNvOWe4a1um/hcpVL26ZnguznFv5g
+         ztY+2m7N2RY4hLl1smNiiJUMC/nh2Mhcj2b4bmRmlXUZBD4YgGR9Bl++7urnX6VUCjj3
+         RfdYbLFR9mkE/wQ6Pr7U3K5NBLUf6BrjXkniWBGg5cEinS4eXaoXMF0Ux8Jv+CzKeG2r
+         QX8Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1717047219; x=1717652019;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=gO8Nf2F8o4ZflAjCXxBjFbbG03SmjS0Jmx7HQpsC/vo=;
+        b=fJnE0tBDsJKrdxFWnp7AuqDO2iI7s64UjJ3bQrE7WlpxkvjmjSRwIsBQl0liyMQlWZ
+         UCZXzCX5XLXNNCJtAu66YoZh/DVPzrhSyDn2QuPIdvI6tYXVfJZq0U4x7jE65gMeFKfE
+         HaOI+vefXsrl5F5m7tJOMqzWU8BmB9M6uKx1PfK6JKtddWC+2Sa2xDd65o3rxs7Qo7mf
+         kWFivVejOQDOM+KyGlKswTwxU6Wf/s/ydxGkLm6guZTy41obdgFnBoFuxJWkHuzZRJba
+         V9U/mqa5w/IG/FQtANktqsYLF6OVjfnZTDcYM46+gbotYikcYYEpQ1OaVfY/nObeb8iz
+         K4zg==
+X-Gm-Message-State: AOJu0YxKlLzZhj5v2nSwn9gAFk6HKbsH9N/vweZgrbTegrUxfuXD1loz
+	p8mBk/Nzmm07SXD3cXADuJKva8AwIFT1fz2X1x/OiBNLIyvEu4Viwkwtar8wjMBoqKBs07g24/Z
+	OeX/gyaAPI8XqSWrdYSnRo+IVwTyxRQ==
+X-Google-Smtp-Source: AGHT+IHLlWzyXVdkO61ONhbF3iVcZ86CHacPzoa0q/DTsKPzAHbLCFXDeFs5vTzBd0r0LxdgSCenW9NVd6SfA7TQoUw=
+X-Received: by 2002:a17:90a:c386:b0:2bd:f713:800e with SMTP id
+ 98e67ed59e1d1-2c1ab9f9eb5mr1218834a91.14.1717047218714; Wed, 29 May 2024
+ 22:33:38 -0700 (PDT)
+MIME-Version: 1.0
+From: vijay ambaliya <vijay.ambaliya890@gmail.com>
+Date: Thu, 30 May 2024 11:03:26 +0530
+Message-ID: <CAKAyvGxumTzXbdkFbiexSmUBgOgt_GSNdknqx3oupe5mH9m+Rg@mail.gmail.com>
+Subject: 
+To: admin@eprintitsaas.org
+Content-Type: multipart/alternative; boundary="00000000000088c3650619a535db"
+
+--00000000000088c3650619a535db
+Content-Type: text/plain; charset="UTF-8"
+
+
+
+--00000000000088c3650619a535db
+Content-Type: text/html; charset="UTF-8"
+
+<div dir="ltr"><br></div>
+
+--00000000000088c3650619a535db--

@@ -1,0 +1,32 @@
+{
+  "data": {
+    "jobData": {
+      "_id": "65ff50f1d9c1ac0079cabc23",
+      "CustomerID": "65ff50e2d9c1ac0079cabc22",
+      "SourceLanguage": "en",
+      "TargetLanguage": "es",
+      "GenerateAudio": true,
+      "TranslationTrackID": "123456789",
+      "JobList": [
+        {
+          "OriginalFileNameWithExt": "sample_document.pdf",
+          "NewFileNameWithExt": "sample_document_translated.pdf"
+        }
+      ],
+      "DeliveryMethod": {
+        "EmailAddress": "user@example.com"
+      },
+      "AudioFiles": [
+        {
+          "fileName": "550e8400-e29b-41d4-a716-446655440000-sample_document.mp3",
+          "originalFileName": "sample_document.mp3"
+        }
+      ]
+    },
+    "customerData": {
+      "_id": "65ff50e2d9c1ac0079cabc22",
+      "Name": "Test Customer"
+    },
+    "isTranslated": true
+  }
+}

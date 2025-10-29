@@ -1,0 +1,430 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: cloud template to deploy pwa resources
+
+# ---------- Parameters -------------------------------------------------------
+Parameters:
+  BucketName:
+    Type: String
+  DomainName:
+    Type: String
+  RootDomainName:
+    Type: String
+  HostedZoneID:
+    Type: String
+  MainAccountNo:
+    Type: Number
+  InvalidateCacheLambdaArn:
+    Type: String
+  ReplicationBucketName:
+    Description: replication bucket name
+    Type: String
+  ReplicationRegion:
+    Description: replication bucket region
+    Type: String
+  FixedCloudfrontZoneId:
+    Description: FixedCloudfrontZoneId
+    Type: String
+  Stage:
+    Description: Stage
+    Type: String
+  ACMCertificate:
+    Description: Stage
+    Type: String
+
+# ---------- Resources lists --------------------------------------------------
+Resources:
+  S3Hosting:
+    DependsOn:
+      - TriggerLambda
+      - ReplicationBucket
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      WebsiteConfiguration:
+        ErrorDocument: 'index.html'
+        IndexDocument: 'index.html'
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: trigger
+                  - Name: suffix
+                    Value: .txt
+            Function: !Ref InvalidateCacheLambdaArn
+      ReplicationConfiguration:
+        Role: !GetAtt
+          - WorkItemBucketBackupRole
+          - Arn
+        Rules:
+          - Destination:
+              Bucket: !Sub "arn:aws:s3:::${ReplicationBucketName}"
+              StorageClass: STANDARD
+            Id: Backup
+            Prefix: ''
+            Status: Enabled
+      VersioningConfiguration:
+        Status: Enabled
+
+  ReplicationBucket:
+    Properties:
+      Code:
+        ZipFile: |
+          const { S3Client, CreateBucketCommand, PutBucketVersioningCommand, PutBucketWebsiteCommand } = require('@aws-sdk/client-s3');
+          const response = require('cfn-response');
+          const send = async (event, context, responseStatus, responseData, physicalResourceId, noEcho) => {
+            let responseBody = JSON.stringify({
+              Status: responseStatus,
+              Reason: "See the details in CloudWatch Log Stream: " + context.logStreamName,
+              PhysicalResourceId: physicalResourceId || context.logStreamName,
+              StackId: event.StackId,
+              RequestId: event.RequestId,
+              LogicalResourceId: event.LogicalResourceId,
+              NoEcho: noEcho || false,
+              Data: responseData
+            });
+            console.log("Response body:\n", responseBody);
+            const myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+              const requestOptions = {
+              method: "PUT",
+              headers: myHeaders,
+              body: responseBody,
+              redirect: "follow"
+            };
+            const response = await fetch(event.ResponseURL, requestOptions);
+            if (response.ok) {
+              console.log(response.ok);
+              }
+          }
+
+          exports.handler = async (event, context) => {
+            const s3 = new S3Client({ region: event.ResourceProperties.DestBucketRegion });
+            console.log('Received event:', JSON.stringify(event, null, 2));
+            try {
+              if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+                const bucketParams = {
+                  Bucket: event.ResourceProperties.DestBucketName
+                };
+                await s3.send(new CreateBucketCommand(bucketParams));
+                console.log('Bucket created successfully');
+
+                const versioningParams = {
+                  Bucket: event.ResourceProperties.DestBucketName,
+                  VersioningConfiguration: {
+                    Status: 'Enabled'
+                  }
+                };
+                await s3.send(new PutBucketVersioningCommand(versioningParams));
+                console.log('Bucket versioning enabled successfully');
+
+                const staticHostParams = {
+                  Bucket: event.ResourceProperties.DestBucketName,
+                  WebsiteConfiguration: {
+                    ErrorDocument: {
+                      Key: 'index.html'
+                    },
+                    IndexDocument: {
+                      Suffix: 'index.html'
+                    }
+                  }
+                };
+                await s3.send(new PutBucketWebsiteCommand(staticHostParams));
+                console.log('Bucket website configuration enabled successfully');
+
+                await send(event, context, response.SUCCESS, {}, event.ResourceProperties.DestBucketName);
+              } else if (event.RequestType === 'Delete') {
+                console.log(`Please delete the ${event.PhysicalResourceId} bucket.`);
+                await send(event, context, response.SUCCESS, {}, event.PhysicalResourceId);
+              }
+            } catch (error) {
+              console.error(error);
+              await send(event, context, response.FAILED, error);
+            }
+          };
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+    Type: "AWS::Lambda::Function"
+
+  TriggerLambda:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt ReplicationBucket.Arn
+      DestBucketName: !Ref ReplicationBucketName
+      DestBucketRegion: !Ref ReplicationRegion
+
+  LambdaExecutionRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Effect: Allow
+                Resource: "arn:aws:logs:*:*:*"
+              - Action:
+                  - "s3:*"
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: LambdaExecutionRolePolicyBucket
+    Type: "AWS::IAM::Role"
+
+  WorkItemBucketBackupRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:s3:::*"
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+  BucketBackupPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetReplicationConfiguration'
+              - 's3:ListBucket'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref BucketName
+          - Action:
+              - 's3:GetObjectVersion'
+              - 's3:GetObjectVersionAcl'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref BucketName
+                  - /*
+          - Action:
+              - 's3:ReplicateObject'
+              - 's3:ReplicateDelete'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - !Sub "arn:aws:s3:::${ReplicationBucketName}"
+                  - /*
+      PolicyName: BucketBackupPolicy
+      Roles:
+        - !Ref WorkItemBucketBackupRole
+
+  CDNOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "Cloudfront Origin identity for ${DomainName}"
+
+  CloudFrontFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: BlueGreenHandler
+      FunctionConfig:
+        Comment: "Blue/Green CloudFront function"
+        Runtime: cloudfront-js-2.0
+      AutoPublish: true
+      FunctionCode: |
+        function handler(event) {
+            var request = event.request;
+            var headers = request.headers;
+            var country = headers["cloudfront-viewer-country"] ? headers["cloudfront-viewer-country"].value : "";
+            var region = headers["cloudfront-viewer-country-region"] ? headers["cloudfront-viewer-country-region"].value : "";
+            var city = headers["cloudfront-viewer-city"] ? headers["cloudfront-viewer-city"].value : "";
+            console.log(country)
+            console.log(region)
+            console.log(city)
+             if (country === "IN") {
+                 request.uri = "/v1" + request.uri;
+             } 
+             return request;
+          }
+  CloudFrontCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: "CustomCachePolicy"
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 1
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers:
+              - CloudFront-Viewer-Country
+              - CloudFront-Viewer-Country-Region
+              - CloudFront-Viewer-City
+              - CloudFront-Viewer-Postal-Code
+              - CloudFront-Viewer-Latitude
+              - CloudFront-Viewer-Longitude
+              - CloudFront-Viewer-Metro-Code
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          CookiesConfig:
+            CookieBehavior: none
+
+  CDN:
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: True
+          TargetOriginId: !Sub "S3-origin-${S3Hosting}"
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref CloudFrontCachePolicy
+        Enabled: True
+        HttpVersion: http2
+        IPV6Enabled: True
+        Origins:
+          - DomainName: !GetAtt S3Hosting.DomainName
+            Id: !Sub "S3-origin-${S3Hosting}"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CDNOriginIdentity}"
+          - DomainName: !Sub "${ReplicationBucketName}.s3-website.${ReplicationRegion}.amazonaws.com"
+            Id: !Sub "S3-origin-${ReplicationBucketName}"
+            CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
+        OriginGroups:
+          Quantity: 1
+          Items:
+            - Id: !Sub "Origin-group-S3-origin-${S3Hosting}"
+              FailoverCriteria:
+                StatusCodes:
+                  Quantity: 5
+                  Items:
+                    - 500
+                    - 504
+                    - 503
+                    - 502
+                    - 404
+              Members:
+                Quantity: 2
+                Items:
+                  - OriginId: !Sub "S3-origin-${S3Hosting}"
+                  - OriginId: !Sub "S3-origin-${ReplicationBucketName}"
+        PriceClass: PriceClass_All # PriceClass_100 / PriceClass_200 / PriceClass_All
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+        ViewerCertificate:
+          AcmCertificateArn: !Ref ACMCertificate
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+
+  S3HostingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Hosting
+      PolicyDocument:
+        Statement:
+          - Sid: ''
+            Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CDNOriginIdentity}"
+            Resource: !Sub "arn:aws:s3:::${S3Hosting}/*"
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action:
+              - s3:ListBucket
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !Sub 'arn:aws:s3:::${BucketName}/*'
+              - !Sub 'arn:aws:s3:::${BucketName}'
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${MainAccountNo}:root'
+            Action:
+              - s3:ListBucket
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !Sub 'arn:aws:s3:::${BucketName}/*'
+              - !Sub 'arn:aws:s3:::${BucketName}'
+
+
+  DNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Ref RootDomainName
+      RecordSets:
+        - AliasTarget:
+            DNSName: !GetAtt CDN.DomainName
+            HostedZoneId: !Ref FixedCloudfrontZoneId # CloudFront hosted zone ID is fixed
+          Name: !Ref DomainName
+          Type: A
+
+
+Outputs:
+  BucketArn:
+    Value: !Ref S3Hosting

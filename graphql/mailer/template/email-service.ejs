@@ -1,0 +1,7 @@
+<%= data.body %>
+<% if (data.isLinks) { %>
+    <p>Please download them using the following links: </p>
+    <% data.urls.forEach((post, index) => { %>
+    <li><a href=<%= post %>><%= data.attachments[index]?.FileName %></a></li>
+    <% }) %>
+<% } %>

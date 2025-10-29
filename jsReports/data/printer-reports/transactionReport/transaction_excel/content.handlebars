@@ -1,0 +1,91 @@
+<html>
+<head>
+	<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+	<style>
+		{#asset kiosk_transaction_styles.css @encoding=utf8}
+	</style>
+</head>
+<body>
+    <table id="table-width">
+            
+    {{#each data.Transactions}}
+    <tr class="information">
+                <td colspan="8">
+                    <tr class="site-width"><td class="report-sub-title font-size-inherit">{{CustomerName}}</td></tr>
+
+                </td>
+            </tr>
+
+                        <tr>
+                            <td class="machine-width"><span class="report-sub-title font-size-inherit">&nbsp; &nbsp;&nbsp;&nbsp;{{_id.TransactionType}}</span></td>
+                        </tr>
+                        <tr> 
+                              <th class="table-heading table-th width-130px ">Payment Type</th>
+                            <th class="table-heading table-th width-130px ">Delivery Method</th>
+                            <th class="table-heading table-th width-130px ">Color</th>
+                            <th class="table-heading table-th width-130px ">Color Pages</th>
+                            <th class="table-heading table-th width-130px ">Grayscale Pages</th>
+                            <th class="table-heading table-th width-130px ">Total Pages</th>
+                            <th class="table-heading table-th width-130px padding-right-30px ">Total Cost</th>
+                        
+                        </tr>
+                        {{#each TransactionTypes}}
+                            <tr class="dash">
+                                <td class="right-aligned width-130px bold">{{_id.PaymentType}}</td>
+                                <td class="right-aligned width-130px bold"></td>
+                                 <td class="right-aligned width-130px bold"></td>
+                                  <td class="right-aligned width-130px bold">{{calculateTotalColorPages data ../../data.decimal ../../data.decimalSeparator}}</td>
+                                   <td class="right-aligned width-130px bold">{{calculateTotalGrayscalePages data ../../data.decimal ../../data.decimalSeparator}}</td>
+                                <td class="right-aligned width-130px bold">{{calculateTotalPages data ../../data.decimal ../../data.decimalSeparator}}</td>
+                                <td class="right-aligned bold width-50px padding-right-30px">{{../../data.currency}}{{calculateTotalCost data ../../data.decimal ../../data.decimalSeparator}}</td>
+                            
+                            </tr>
+
+                            {{#each data}}
+                                <tr>
+                                   <td class="right-aligned width-130px"></td>
+                                    <td class="right-aligned width-130px">{{_id.JobDeliveryMethod}}</td>
+                                    <td class="right-aligned width-130px">{{_id.Color}}</td>
+                                    <td class="right-aligned width-130px">{{hasDecimal ColorPages  ../../../data.decimalSeparator}}</td>
+                                    <td class="right-aligned width-130px">{{hasDecimal GrayscalePages  ../../../data.decimalSeparator}}</td>
+                                    <td class="right-aligned width-130px">{{hasDecimal TotalPages ../../../data.decimalSeparator}}</td>
+                                    <td class="right-aligned width-130px padding-right-30px">{{../../../data.currency}}{{roundNumber TotalCost ../../../data.decimal ../../../data.decimalSeparator}}</td>
+                                </tr>
+                            {{/each}} <!-- end document types-->
+
+                        {{/each}}  <!-- end delivery types-->
+                        <tr class=""><td>&nbsp;</td></tr>
+                        <tr class="total bold table-th">
+                            <td class="right-aligned bold width-130px">Total:</td>
+                            <td class="right-aligned bold width-130px"></td>
+                             <td class="right-aligned bold width-130px"></td>
+                             <td class="right-aligned bold width-130px">{{calculateFloorWiseTotalColor ../data.decimal ../data.decimalSeparator}}</td>
+                             <td class="right-aligned bold width-130px">{{calculateFloorWiseTotalGrayscale ../data.decimal ../data.decimalSeparator}}</td>
+                            <td class="right-aligned bold width-130px">{{calculateFloorWiseTotalPage ../data.decimal ../data.decimalSeparator}}</td>
+                             <td class="right-aligned bold width-130px padding-right-30px">{{../../data.currency}}{{calculateFloorWiseTotalCost ../data.decimal ../data.decimalSeparator}}</td>
+    
+                        </tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+            {{/each}} <!-- end locations -->
+
+
+        <tr class=""><td>&nbsp;</td></tr>
+        <tr class=""><td>&nbsp;</td></tr>
+        
+    {{#if data.Transactions}}
+    <tr class="grand-total-table top-border">
+        <td class="right-aligned bold width-130px"> Grand Total:</td>
+            <th class="right-aligned bold width-130px"></td>
+            <th class="right-aligned bold width-130px"></td>
+            <th class="right-aligned bold width-130px">{{calculateGrandTotalColorPages data.decimalSeparator}}</th>
+            <th class="right-aligned bold width-130px">{{calculateGrandTotalGrayscalePages data.decimalSeparator}}</th>
+            <th class="right-aligned bold width-130px">{{calculateGrandTotal data.decimalSeparator}}</td>
+            <th class="right-aligned bold width-130px padding-right-30px">{{data.currency}}{{calculateGrandTotalCost data.decimal data.decimalSeparator}}</th>
+        
+    </tr>
+    {{/if}}
+            {{resetFlags}}
+    </table>
+</body>
+</html>

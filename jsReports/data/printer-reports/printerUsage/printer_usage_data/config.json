@@ -1,0 +1,15 @@
+{
+    "shortid": "wEAQ4A6Iv",
+    "name": "printer_usage_data",
+    "creationDate": {
+        "$$date": 1654853067012
+    },
+    "modificationDate": {
+        "$$date": 1725520412173
+    },
+    "_id": "MMETf9vUxmlGE7lY",
+    "$entitySet": "data",
+    "entitySet": "data",
+    "type": "entity",
+    "key": "MMETf9vUxmlGE7lY"
+}

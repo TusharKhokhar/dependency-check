@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: IAM user creation with access to generate signed URLs for specific S3 folder
+
+Parameters:
+  BucketName:
+    Type: String
+  SecondaryBucketName:
+    Type: String
+  DomainName:
+    Type: String
+  Stage:
+    Type: String
+  ConvertedBucketName:
+    Type: String
+  SecondaryConvertedBucketName:
+    Type: String
+
+
+Resources:
+  MyIAMUser:
+    Type: "AWS::IAM::User"
+    Properties:
+      UserName: !Sub "iam-${DomainName}-${Stage}"
+
+  MyIAMAccessKey:
+    Type: "AWS::IAM::AccessKey"
+    Properties:
+      UserName: !Ref MyIAMUser
+
+  MyIAMPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "MyIAMPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${BucketName}/EmailService/*"
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${SecondaryBucketName}/EmailService/*"
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${BucketName}/Import/*"
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${BucketName}/Failed/*"
+          - Effect: "Allow"
+            Action:
+              - "s3:ListBucket"
+            Resource: !Sub "arn:aws:s3:::${BucketName}"
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${ConvertedBucketName}/PublicUploads/TranslationService/*"
+          - Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${SecondaryConvertedBucketName}/PublicUploads/TranslationService/*"
+      Users:
+        - !Ref MyIAMUser
+
+  MySecret:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      Name: !Sub "${Stage}/${DomainName}/iam"
+      Description: "Secret for IAM user credentials to access s3 objects"
+      ReplicaRegions:
+      - Region: us-west-2
+      SecretString: !Sub |
+        {
+          "AccessKeyId": "${MyIAMAccessKey}",
+          "SecretAccessKey": "${MyIAMAccessKey.SecretAccessKey}"
+        }
+    DependsOn: MyIAMAccessKey

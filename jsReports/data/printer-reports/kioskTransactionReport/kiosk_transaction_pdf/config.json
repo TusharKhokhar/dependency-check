@@ -1,0 +1,20 @@
+{
+    "name": "kiosk_transaction_pdf",
+    "engine": "handlebars",
+    "recipe": "chrome-pdf",
+    "data": {
+        "shortid": "Gf-M7kOCB"
+    },
+    "shortid": "IhDfVWAmW",
+    "chrome": {
+        "printBackground": true
+    },
+    "creationDate": {
+        "$$date": 1699595567691
+    },
+    "modificationDate": {
+        "$$date": 1717512766570
+    },
+    "_id": "bbNYQLEy7g8GcXEw",
+    "$entitySet": "templates"
+}

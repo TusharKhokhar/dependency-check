@@ -1,0 +1,121 @@
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metro/4.1.5/css/metro.min.css">
+    <style>
+        {#asset kiosk_transaction_styles.css @encoding=utf8}
+    </style>
+    <script></script>
+</head>
+<body class="px-8 mt-8">
+    <p class="gray-color">{{data.date}}</p>
+    <div class="row ml-0 mt-2 border-bottom" style="justify-content: space-between">
+        <h4>Kiosk Transaction Summary Report</h4>
+        <img src="{{data.logo}}" />
+    </div>
+    {{#each data.Transactions}}
+        {{#if Things.length}}
+        <div class="custom-wrapper">
+        <table class="col1 sub-report-table">
+            <tr class="information">
+                <td colspan="8">
+                    <table class="site-width sub-report-table">
+                      <tr><td class="bold">Customer Name : {{_id.CustomerName}}</td></tr>
+                    </table>
+                </td>
+            </tr>
+            {{#each Things}}
+                <br>
+                    <table class="sub-report-table" style="page-break-inside: avoid;">
+                        <tr>
+                            <td colspan="10" class="bold">
+                                {{!-- <span class="report-sub-title bold font-size-inherit">&nbsp; &nbsp;&nbsp;&nbsp;{{machineName}}</span> --}}
+                                    Thing Name : {{_id.ThingName}}
+                            </td>
+                        </tr>
+                        <tr class="bg-row">
+                            <th class="table-heading table-th width-130px ">Transaction Type</th>
+                            <th class="table-heading table-th width-130px padding-right-30px">Payment Type</th>
+                            {{#isSumGreaterThanZero TransactionTypes}}
+                            <th class="table-heading table-th width-130px padding-right-30px">Amount</th>
+                            {{/isSumGreaterThanZero}}
+                            {{#isPageCountSumGreaterThanZero TransactionTypes}}
+                            <th class="table-heading table-th width-50px padding-right-30px">Page Count</th>
+                            {{/isPageCountSumGreaterThanZero}}
+                        </tr>
+                        {{#allDataArraysHaveLength TransactionTypes}}
+                        {{#each TransactionTypes}}
+                         {{#if data.length}}
+                        <tr class="border-top-bottom">
+                                <td class="right-aligned width-130px bold">{{_id.TransactionType}}</td>
+                                <td class="right-aligned width-130px bold padding-right-30px"></td>
+                                {{#isSumGreaterThanZero ../TransactionTypes}}
+                                <td class="right-aligned width-130px bold padding-right-30px">{{../../../data.currency}}{{calculateTotalAmount data ../../../data.decimal ../../../data.decimalSeparator}}</td>
+                                {{/isSumGreaterThanZero}}
+                                {{#isPageCountSumGreaterThanZero ../TransactionTypes}}
+                                <td class="right-aligned bold width-50px padding-right-30px">{{calculateTotal data ../../../data.decimal ../../../data.decimalSeparator}}</td>
+                                {{/isPageCountSumGreaterThanZero}}
+                            </tr>
+                            {{#each data}}
+                                <tr class="dash">
+                                    <td class="right-aligned width-130px"></td>
+                                    <td class="right-aligned width-130px padding-right-30px">{{_id.PaymentType}}</td>
+                                    {{#isSumGreaterThanZero ../../TransactionTypes}}
+                                    <td class="right-aligned width-130px padding-right-30px">{{../../../../data.currency}}{{roundNumber TotalAmount ../../../../data.decimal ../../../../data.decimalSeparator}}</td>
+                                     {{/isSumGreaterThanZero}}
+                                     {{#isPageCountSumGreaterThanZero ../../TransactionTypes}}
+                                    <td class="right-aligned  width-50px padding-right-30px">{{hasDecimal PageCount ../../../../data.decimalSeparator}}</td>
+                                    {{/isPageCountSumGreaterThanZero}}
+                                </tr>
+                            {{/each}} <!-- end document types-->
+
+                            {{/if}}
+
+                        {{/each}}  <!-- end delivery types-->
+                        <tr class="total top-border">
+                            <td class="right-aligned bold width-130px">Total:</td>
+                            <td class="right-aligned bold width-130px padding-right-30px"></td>
+                             {{#isSumGreaterThanZero TransactionTypes}}
+                            <td class="right-aligned bold width-130px padding-right-30px">{{../../data.currency}}{{calculateFloorWiseTotalAmount ../../data.decimal ../../data.decimalSeparator}}</td>
+                             {{/isSumGreaterThanZero}}
+                             {{#isPageCountSumGreaterThanZero TransactionTypes}}
+                            <td class="right-aligned bold width-50px padding-right-30px">{{calculateFloorWiseTotalCost ../../data.decimal ../../data.decimalSeparator}}</td>
+                            {{/isPageCountSumGreaterThanZero}}
+                        </tr>
+                        {{else}}
+                            {{!-- Display a message when there is no data --}}
+                            <tr class="center-aligned">
+                                <td colspan="4">No data available</td>
+                            </tr>
+                        {{/allDataArraysHaveLength}}
+                        <tr><td></td></tr>
+                        <tr><td></td></tr>
+                    </table>
+                <br>
+            {{/each}} <!-- end locations -->
+        </table>
+        {{/if}}
+
+        <br>
+    {{/each}}<!-- end sites -->
+{{#if data.Transactions}}
+    <table class="grand-total-table" style="page-break-inside: avoid;">
+        <tr>
+            <th class="right-aligned bold width-130px"> Grand Total:</th>
+            <th class="right-aligned bold width-130px padding-right-30px"></td>
+            {{#isGrandAmountSumGreaterThanZero}}
+            <th class="right-aligned bold width-130px padding-right-30px">{{data.currency}}{{calculateGrandTotalAmount data.decimal data.decimalSeparator}}</th>
+            {{/isGrandAmountSumGreaterThanZero}}
+            {{#isGrandPageCountSumGreaterThanZero}}
+            <th class="right-aligned bold width-50px padding-right-30px">{{calculateGrandTotal data.decimal data.decimalSeparator}}</th>
+            {{/isGrandPageCountSumGreaterThanZero}}
+        </tr>
+    </table>
+{{/if}}
+        </div>
+    {{resetFlags}}
+    <script>
+        // document.getElementById("delivery-types-div").style.pageBreakInside = "avoid";
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+    "name": "transaction_pdf",
+    "engine": "handlebars",
+    "recipe": "chrome-pdf",
+    "data": {
+        "shortid": "kGl4D8tRg"
+    },
+    "shortid": "Ax8gk1L88",
+    "chrome": {
+        "printBackground": true
+    },
+    "creationDate": {
+        "$$date": 1699596991282
+    },
+    "modificationDate": {
+        "$$date": 1717513631535
+    },
+    "_id": "nyBcMgUEQ98l4Bxs",
+    "$entitySet": "templates"
+}

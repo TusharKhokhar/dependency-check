@@ -1,0 +1,185 @@
+{
+  "data": {
+      "date": "May 10, 2022 to June 10, 2022",
+      "logo": "https://bigxpose-staging-s3buckettenantuploads-1wvdvfn9ctcvc.s3.amazonaws.com/Logos/629a663abf686e00095dc16c/web.png",
+      "decimal": "2",
+      "decimalSeparator":".",
+    "general": {
+      "summaryDetails": [
+        {
+          "title": "Total Days",
+          "value": 366
+        },
+        {
+          "title": "Total Pages",
+          "value": 366
+        },
+        {
+          "title": "Total Pages",
+          "value": 366.567
+        }
+      ]
+    },
+    "colorComposition": {
+      "summaryDetails": [
+        {
+          "title": "grayscale",
+          "page": 544.879,
+          "percent": "100.00"
+        },
+        {
+          "title": "grayscale",
+          "page": 544.879,
+          "percent": "100.00"
+        }
+      ]
+    },
+    "duplexComposition": {
+      "summaryDetails": [
+        {
+          "title": "Simplex",
+          "page": 473,
+          "percent": "86.95"
+        },
+        {
+          "title": "Duplex",
+          "page": 71,
+          "percent": "13.05"
+        }
+      ]
+    },
+     "stapleComposition": {
+      "summaryDetails": [
+        {
+          "title": "Stapled",
+          "page": 30,
+          "percent": "86.95"
+        },
+        {
+          "title": "Non Stapled",
+          "page": 71,
+          "percent": "13.05"
+        }
+      ]
+    },
+     "orientationComposition": {
+      "summaryDetails": [
+        {
+          "title": "Landscape",
+          "page": 30,
+          "percent": "86.95"
+        },
+        {
+          "title": "Portrait",
+          "page": 71,
+          "percent": "13.05"
+        }
+      ]
+    },
+
+     "paperSizeComposition": {
+      "summaryDetails": [
+        {
+          "paperName": "A3",
+          "page": 30,
+          "percent": "86.95"
+        },
+        {
+          "paperName": "A4",
+          "page": 71,
+          "percent": "13.05"
+        },
+        {
+          "paperName": "Letter",
+          "page": 34,
+          "percent": "13.05"
+        }
+      ]
+    },
+    "jobSubmissionComposition": {
+      "summaryDetails": [
+        {
+          "title": "web",
+          "page": 544.55,
+          "percent": "100.00"
+        },
+        {
+          "title": "web",
+          "page": 544.55,
+          "percent": "100.00"
+        },
+        {
+          "title": "web",
+          "page": 544.55,
+          "percent": "100.00"
+        }
+      ]
+    },
+    "printers": {
+      "summaryDetails": [
+        {
+          "title": null,
+          "page": 289.44,
+          "percent": "53.13"
+        },
+        {
+          "title": "hp_2560_adult",
+          "page": 255.33,
+          "percent": "46.88"
+        }
+      ]
+    },
+    "daily": [
+      {
+        "title": "07-01-2022",
+        "data": 220.33
+      },
+      {
+        "title": "07-05-2022",
+        "data": 324
+      }
+    ],
+    "chartDataDaily": {
+    
+        "title":["June 1","June 2","June 3","June 4","June 5","June 6","June 7"],
+        "data": [220,345,23,45,34,56,78]
+      
+    },
+    "chartDataHourly": {
+    
+        "title":["00:00","00:01","00:02","00:03","00:04","00:05","00:06"],
+        "data": [220,345,23,4,6,89,32]
+      
+    },
+    "hourly": [
+      {
+        "title": "00:00",
+        "data": 319.33
+      },
+      {
+        "title": "00:02",
+        "data": 1
+      },
+      {
+        "title": "00:04",
+        "data": 128
+      },
+      {
+        "title": "00:06",
+        "data": 84
+      },
+      {
+        "title": "00:08",
+        "data": 10
+      },
+      {
+        "title": "00:10",
+        "data": 2
+      },
+      {
+        "title": "00:100",
+        "data": 2
+      }
+    ]
+  }
+}

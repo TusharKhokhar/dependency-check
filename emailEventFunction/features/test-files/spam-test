@@ -1,0 +1,92 @@
+Return-Path: <vijay.ambaliya890@gmail.com>
+Received: from mail-pj1-f43.google.com (mail-pj1-f43.google.com [209.85.216.43])
+ by inbound-smtp.us-east-1.amazonaws.com with SMTP id 4i179ng5mjhpjnplo5ce4nb192khkbknte21ca01
+ for admin@eprintitsaas.org;
+ Mon, 27 May 2024 19:06:29 +0000 (UTC)
+X-SES-Spam-Verdict: FAIL
+X-SES-Virus-Verdict: PASS
+Received-SPF: pass (spfCheck: domain of _spf.google.com designates 209.85.216.43 as permitted sender) client-ip=209.85.216.43; envelope-from=vijay.ambaliya890@gmail.com; helo=mail-pj1-f43.google.com;
+Authentication-Results: amazonses.com;
+ spf=pass (spfCheck: domain of _spf.google.com designates 209.85.216.43 as permitted sender) client-ip=209.85.216.43; envelope-from=vijay.ambaliya890@gmail.com; helo=mail-pj1-f43.google.com;
+ dkim=pass header.i=@gmail.com;
+ dmarc=pass header.from=gmail.com;
+X-SES-RECEIPT: AEFBQUFBQUFBQUFHTmVWNERCTExnZUtxeHlQaEY1cGlINFdXU3VVcWZTZ3Z6QkVwUWdMS04rVmgrYkZOdmYxbWVmamZQTVdwanpXNmRCRnF6Tm16NkdGQU41WFdkV2Q4NWFXdTlKb1NjbG5HS3Q5enZtUkVUUDNvU1A2aWZzaWdVeXA2b3NsRDFpMGh4NnRyWUtVbm10UFB3SFJUVVdXaTJtWjZjZ21yQXNLZ0hHeHFHZGd4anZxOUNFeTRrNXpVeW83d09ORGRyVnlBZDljR3BYbFl5MnZxMnRwSUNXTlZqYlU4OFMreUZFUWVPMVZSR1lSQVRudklFYitaSjBwSHMxdU45dUtZblNrd0lYenozNndoSERwT2dqdEszdUlkRGtjS2xZWnhEVUpoQVUrUnd0bWhNcWc9PQ==
+X-SES-DKIM-SIGNATURE: a=rsa-sha256; q=dns/txt; b=WxZnuWES1fVyneUXd3XDFEWJpzi0ao0y8a17voGbzxMVheKF8e7qfyqwG+ckv7ektYCmID4CGLYuu6awUeNv4wQG8jwCwSeTLDNENX5Nto/Zpp/Ze66kndkOr2aNKyZQ2EAYgTBGkPTj66B73pXEYax0FD3c1D4BNp1KdUUk9w8=; c=relaxed/simple; s=ug7nbtf4gccmlpwj322ax3p6ow6yfsug; d=amazonses.com; t=1716836789; v=1; bh=CrJC0DEKktZkeM2IvJQD5sijdDtZuXcLYEHrFZ9L1Vg=; h=From:To:Cc:Bcc:Subject:Date:Message-ID:MIME-Version:Content-Type:X-SES-RECEIPT;
+Received: by mail-pj1-f43.google.com with SMTP id 98e67ed59e1d1-2bfdae0b0e0so33054a91.0
+        for <admin@eprintitsaas.org>; Mon, 27 May 2024 12:06:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1716836788; x=1717441588; darn=eprintitsaas.org;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=CrJC0DEKktZkeM2IvJQD5sijdDtZuXcLYEHrFZ9L1Vg=;
+        b=cYd5mCGieH45dP8UuTwwiQhsMlxzVQPee1T+5xTXgFpg1RBoN0i0Hd2YDmTGY7KIQI
+         sY34Xt4Z1UazUYM2t8uEvM/qJZArye165u91TyvAhH4nLoqpU3xTZG+Vv/jlyLeUhI4B
+         QLGaGxGlAf6bPXKmsExnB+LghagHRLWTj9fXT5ByB77jhh0txFp/hGhRaSxkT0mitCW6
+         ugAgZhmuAORt5nNi5RBUzFsOwJkVSPO+0zmm33J0S9Bk5DjgQ5VkekfXydOD46qTeL4E
+         n8Dx82jUUjh4neSPMbyPkt8keuR8Hbrn/J+rpmBMrH7m6PHLBuhovRwKBMIwINnUT9NY
+         VIXA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1716836788; x=1717441588;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=CrJC0DEKktZkeM2IvJQD5sijdDtZuXcLYEHrFZ9L1Vg=;
+        b=VYqTshvHfq87gofTnB/UTQYppG4vWODDMq4HSnD5GzoxH3UpzIdUfXUhfr8+oqCgPq
+         MORG6HH7GDmNWkh9101dqkA50+Iax31Te5/kEheGWqKa6Gmf2y9qe5XcKzvrTs5yqQoX
+         DH3KzXQ7wDufFd6eQQnPf2kDr846bhxfZuDHFPKAcjjgIzPhP6k9H+k6AAZCbcj0Lrjg
+         G9+erBX1aYVQp9OW5W4eTuN4hGZ5JYzkV9mKSMsL5WatknGS84p+8h1Qbou3aTP8CCVV
+         FxLwC2JS0jPU/qXXVvncIqn6QfJEwe049cJYEw70zWGxx9Ytz5iWO75PmGe6CvhzhiZ6
+         jpkQ==
+X-Gm-Message-State: AOJu0Ywn1EKnt5lirgrKNok1fvFMn/WNcJ5R/o428VRjDzND2EG9ukjB
+	vFLACHww7tZSSHJqZFvqWzc7tqpLOc69eL1OvosRFNJKa8pnSZZ3xOccThCxEK4WQS+FDVHV0Gs
+	EjZOgC0b/ApjFOQtl8etyeYDhGk5Gm9S2
+X-Google-Smtp-Source: AGHT+IG6s0uwrzfDZ4PSRIp1c1j+T5WvMxGDObCiRoTtCtXwO31VGP0zWvzKAdcF0/dFF3CjsixV3ErTt4nytnxVF5A=
+X-Received: by 2002:a17:90a:d30f:b0:2bd:f6a7:1d05 with SMTP id
+ 98e67ed59e1d1-2bf5ee1cb28mr8825171a91.18.1716836787820; Mon, 27 May 2024
+ 12:06:27 -0700 (PDT)
+MIME-Version: 1.0
+From: vijay ambaliya <vijay.ambaliya890@gmail.com>
+Date: Tue, 28 May 2024 00:36:11 +0530
+Message-ID: <CAKAyvGxt494dD+0g4zGWwJ2iqYZXUNujkCZ_+HzGdoc-AneMWg@mail.gmail.com>
+Subject: Spam Check
+To: admin@eprintitsaas.org
+Content-Type: multipart/alternative; boundary="000000000000e02283061974364c"
+
+--000000000000e02283061974364c
+Content-Type: text/plain; charset="UTF-8"
+
+XJS*C4JDBQADN1.NSBN3*2IDNEN*GTUBE-STANDARD-ANTI-UBE-TEST-EMAIL*C.34X
+
+--000000000000e02283061974364c
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr"><div class=3D"gmail-gs" style=3D"margin:0px;min-width:0px;=
+padding:0px 0px 20px;width:initial;font-family:&quot;Google Sans&quot;,Robo=
+to,RobotoDraft,Helvetica,Arial,sans-serif;font-size:medium"><div class=3D"g=
+mail-"><div id=3D"gmail-:1s5" class=3D"gmail-ii gmail-gt" style=3D"directio=
+n:ltr;margin:8px 0px 0px;padding:0px;font-size:0.875rem;overflow-x:hidden">=
+<div id=3D"gmail-:1zv" class=3D"gmail-a3s gmail-aiL" style=3D"direction:ini=
+tial;font-variant-numeric:normal;font-variant-east-asian:normal;font-varian=
+t-alternates:normal;font-kerning:auto;font-feature-settings:normal;font-str=
+etch:normal;font-size:small;line-height:1.5;font-family:Arial,Helvetica,san=
+s-serif;overflow:auto hidden"><div dir=3D"ltr"><div id=3D"m_-41575850229251=
+75648gmail-:qp" style=3D"direction:ltr;margin:8px 0px 0px;padding:0px;font-=
+size:0.875rem;overflow-x:hidden;font-family:&quot;Google Sans&quot;,Roboto,=
+RobotoDraft,Helvetica,Arial,sans-serif"><div id=3D"m_-4157585022925175648gm=
+ail-:2lm" style=3D"direction:initial;font-variant-numeric:normal;font-varia=
+nt-east-asian:normal;font-variant-alternates:normal;font-kerning:auto;font-=
+feature-settings:normal;font-stretch:normal;font-size:small;line-height:1.5=
+;font-family:Arial,Helvetica,sans-serif;overflow:auto hidden"><div dir=3D"l=
+tr"><pre style=3D"margin-top:0px;border:0px;font-variant-numeric:inherit;fo=
+nt-variant-east-asian:inherit;font-variant-alternates:inherit;font-stretch:=
+inherit;font-kerning:inherit;font-feature-settings:inherit;vertical-align:b=
+aseline;box-sizing:inherit;width:auto;max-height:600px;overflow:auto;color:=
+rgb(12,13,14)"><code style=3D"margin:0px;padding:0px;border:0px;font-style:=
+inherit;font-variant:inherit;font-weight:inherit;font-stretch:inherit;line-=
+height:inherit;font-kerning:inherit;font-feature-settings:inherit;vertical-=
+align:baseline;box-sizing:inherit;background-color:transparent;white-space:=
+inherit;border-radius:0px">XJS*C4JDBQADN1.NSBN3*2IDNEN*GTUBE-STANDARD-ANTI-=
+UBE-TEST-EMAIL*C.34X</code></pre></div></div></div></div></div></div></div>=
+</div></div>
+
+--000000000000e02283061974364c--

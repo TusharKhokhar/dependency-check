@@ -1,0 +1,15 @@
+{
+    "shortid": "PsdDOrcfu",
+    "name": "value_added_data",
+    "creationDate": {
+        "$$date": 1699533165281
+    },
+    "modificationDate": {
+        "$$date": 1749723332046
+    },
+    "_id": "FPPfSTcksnA19MCf",
+    "$entitySet": "data",
+    "entitySet": "data",
+    "type": "entity",
+    "key": "FPPfSTcksnA19MCf"
+}

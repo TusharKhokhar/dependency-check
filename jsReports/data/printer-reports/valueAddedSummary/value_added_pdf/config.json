@@ -1,0 +1,20 @@
+{
+    "name": "value_added_pdf",
+    "engine": "handlebars",
+    "recipe": "chrome-pdf",
+    "data": {
+        "shortid": "PsdDOrcfu"
+    },
+    "shortid": "WBxOtSdNj",
+    "chrome": {
+        "printBackground": true
+    },
+    "creationDate": {
+        "$$date": 1699533364047
+    },
+    "modificationDate": {
+        "$$date": 1717501446573
+    },
+    "_id": "sttHkzUNuFHPD8D2",
+    "$entitySet": "templates"
+}

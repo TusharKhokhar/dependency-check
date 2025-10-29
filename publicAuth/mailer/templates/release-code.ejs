@@ -1,0 +1,28 @@
+<br>
+<div class="title-container">
+    <img src=<%= data.checkPng %> alt="" style="width:32px; height:30px" width="30" height="30"/>
+    <div>
+        <b style="padding-left:5px">Your Job was received!</b>
+    </div>
+</div>
+<br>
+<div class="form-group">
+    <% if (data.customerUrl) { %>
+        <img src=<%= data.customerUrl %> alt="" style="width:50px; height:30px" width="50" height="30" /> <b style="padding-left: 5px; font-size: 20px;"><%= data.CustomerName %></b>
+    <% } %>
+    <% if (!data.customerUrl) { %>
+        <b style="padding-left: 5px; font-size: 20px;"><%= data.CustomerName %></b>
+    <% } %>
+</div>
+<br>
+<div>
+    <p style="font-size: 15px; font-weight: bold"> <%= data.releaseCodeDisplayText %>: <%= data.releaseCode %></p> <br>
+</div>
+<div>
+    <p style="padding-left: 5px; font-size: 20px;"> <%=data.customEmailMessage %></p>
+</div>
+<h4 style="background-color: lightgray">List of files Submitted: </h4>
+<% data.data.forEach((post, index) => { %>
+<%=index + 1%>) <%= post.originalFileNameWithExt %><br>
+<% }) %>
+<br>

@@ -1,0 +1,16 @@
+<br>
+<% if (data.CustomerName) { %>
+    <p>Dear <%= data.CustomerName %>,</p>
+<% } else { %>
+    <p>Dear Customer,</p>
+<% } %>
+<br>
+<div>
+    <b style="color:rgb(0, 0, 0)"><%= data.message %></b>
+</div>
+<br>
+<h4>List of files which were not processed: </h4>
+<% data.files.forEach((file, index) => { %>
+<%= index + 1 %>) <%= file %><br>
+<% }) %>
+<br>

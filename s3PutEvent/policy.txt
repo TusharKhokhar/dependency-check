@@ -1,0 +1,18 @@
+{
+ "StringEquals": {
+  "AWS:SourceAccount": "948664164116"
+ },
+ "ArnLike": {
+  "AWS:SourceArn": "arn:aws:s3:::bigxpose-staging-s3buckettenantuploads-1wvdvfn9ctcvc"
+ }
+}
+
+
+{
+ "StringEquals": {
+  "AWS:SourceAccount": "948664164116"
+ },
+ "ArnLike": {
+  "AWS:SourceArn": "arn:aws:s3:::bigxpose-staging-s3buckettenantuploads-1wvdvfn9ctcvc"
+ }
+}

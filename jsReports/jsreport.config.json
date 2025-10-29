@@ -1,0 +1,31 @@
+{
+  "httpPort": 5488,
+  "trustUserCode": true,
+  "licenseKey": "CEC17187-D7AE-4065-A59C-55FCE3A3718B",
+  "store": {
+    "provider": "fs"
+  },
+  "blobStorage": {
+    "provider": "fs"
+  },
+  "timeout": 60000,
+  "extensions": {
+    "studio": {
+      "enabled": true
+    },
+    "fs-store": {
+      "dataDirectory": "data"
+    },
+    "authentication": {
+      "cookieSession": {},
+      "admin": {
+        "username": "admin",
+        "password": "password"
+      },
+      "enabled": false
+    },
+    "sample-template": {
+      "createSamples": true
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "handlefailedthirdpartytransactions",
+  "version": "1.0.0",
+  "description": " lambda which will be saving failed usage transaction to third party service and also retrying the them on daily basis",
+  "main": "index.js",
+  "scripts": {
+    "test": "env environment=test npx cucumber-js",
+    "report": "env environment=test npx cucumber-js --publish"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "1.7.4",
+    "base64url": "^3.0.1",
+    "loglevel": "^1.9.2",
+    "mongodb": "^6.16.0",
+    "mongodb-memory-server": "^10.1.4"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "10.7.0",
+    "@faker-js/faker": "^8.4.1",
+    "chai": "4.3.10",
+    "nyc": "^17.1.0",
+    "sinon": "^19.0.2"
+  }
+}

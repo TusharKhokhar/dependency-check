@@ -1,0 +1,69 @@
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+      <style>
+		{#asset value_added_styles.css @encoding=utf8}
+	</style>
+</head>
+<body class="px-8 mt-8">
+      <p class="gray-color">{{data.date}}</p>
+      <div class="row ml-0 mt-2" style="justify-content: space-between">
+        <h4>Value Added Summary</h4>
+        <img src="{{data.logo}}"/>
+      </div>
+      {{#if data.Customers.length}}
+      <p class="mb-2 font-weight--bold">{{CustomerName}}</p>
+     <table class='mb-8' >
+              {{#each data.Customers}}
+              <tr>
+                <td colspan="3" class="bold font-16">
+                   {{CustomerName}}
+                </td>
+            </tr>
+
+                <tr>
+                    <td class="table-heading bold bottom-border-color">Username</td>
+                    <td class="table-heading bold bottom-border-color">Amount</td>
+                    <td class="table-heading bold bottom-border-color">Payment Type</td>
+                </tr>
+             {{#each users}}
+                <tr class='dash'>
+                    <td>{{_id.Username}}</td>
+                    <td>{{../../data.currency}}{{roundNumber Amount ../../data.decimal ../../data.decimalSeparator}}</td>
+                    <td>{{PaymentType}}</td>
+                 </tr>
+                {{/each}}
+             <tr class="total bold">
+                            <td class="top-border-color bold">Total</td>
+                             {{#isAmountSumGreaterThanZero users}}
+                            <td class="top-border-color bold">{{../data.currency}}{{calculateTotalAmount users ../data.decimal ../data.decimalSeparator}}</td>
+                            {{/isAmountSumGreaterThanZero}}
+                            <td class="top-border-color bold"></td>
+                </tr>
+                    <tr class=""><td>&nbsp;</td></tr>
+                        {{/each}}
+
+                 <tr class=""><td>&nbsp;</td></tr>
+                        
+                 <tr class="total top-border">
+                            <td class="bold font-16">Grand Total</td>
+                            {{#isGrandAmountSumGreaterThanZero}}
+                            <td class="bold font-16">{{data.currency}}{{calculateGrandTotal data.decimal data.decimalSeparator}}</td>
+                            {{/isGrandAmountSumGreaterThanZero}}
+                            <td class="bold"></td>
+                </tr>
+            {{resetFlags}}
+
+        </table>
+        
+        {{else}}
+        <table></table>
+        {{/if}}
+
+  </body>
+</html>
+
+
+
+
+

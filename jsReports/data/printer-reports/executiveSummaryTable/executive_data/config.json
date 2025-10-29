@@ -1,0 +1,15 @@
+{
+    "shortid": "Y__UmlbO8",
+    "name": "executive_data",
+    "creationDate": {
+        "$$date": 1654929979430
+    },
+    "modificationDate": {
+        "$$date": 1725265170399
+    },
+    "_id": "FrkZdoksQrfpqysX",
+    "$entitySet": "data",
+    "entitySet": "data",
+    "type": "entity",
+    "key": "FrkZdoksQrfpqysX"
+}

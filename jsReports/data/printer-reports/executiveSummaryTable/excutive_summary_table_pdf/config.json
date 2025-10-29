@@ -1,0 +1,25 @@
+{
+    "name": "excutive_summary_table_pdf",
+    "engine": "handlebars",
+    "recipe": "chrome-pdf",
+    "shortid": "Vumhwky1D",
+    "chrome": {
+        "printBackground": true,
+        "landscape": true,
+        "width": "",
+        "viewportWidth": null,
+        "displayHeaderFooter": true,
+        "mediaType": "print"
+    },
+    "creationDate": {
+        "$$date": 1654878876940
+    },
+    "modificationDate": {
+        "$$date": 1725265224830
+    },
+    "_id": "WxIpQfRQWow3LaN0",
+    "$entitySet": "templates",
+    "data": {
+        "shortid": "Y__UmlbO8"
+    }
+}

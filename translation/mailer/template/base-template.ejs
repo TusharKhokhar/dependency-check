@@ -1,0 +1,29 @@
+<!-- base email template -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>ePRINTit SaaS</title>
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"> -->
+</head>
+
+<body>
+<div style="border: 0 solid #fff;padding:3em;">
+    <div>
+        <h1 style="font-family:Helvetica,Arial,sans-serif;margin:0;line-height:70px;color:#fff;
+    background-color: #F7941E ;padding-left: 20px;">ePRINTit SaaS</h1>
+    </div>
+    <div style="background-color: white;padding: 14px;">
+        <% switch (filename) {
+        case 'email-service': %>
+        <%- include('./email-service.ejs', { data: data }) %>
+        <%  break;
+            default:
+                break;
+        } %>
+    </div>
+</div>
+</body>
+</html>

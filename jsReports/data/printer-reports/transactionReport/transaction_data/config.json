@@ -1,0 +1,12 @@
+{
+    "shortid": "kGl4D8tRg",
+    "name": "transaction_data",
+    "creationDate": {
+        "$$date": 1699596969279
+    },
+    "modificationDate": {
+        "$$date": 1718086336155
+    },
+    "_id": "NfqCkY85gAoyNZIE",
+    "$entitySet": "data"
+}

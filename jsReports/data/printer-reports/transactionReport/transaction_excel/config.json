@@ -1,0 +1,20 @@
+{
+    "name": "transaction_excel",
+    "engine": "handlebars",
+    "recipe": "html-to-xlsx",
+    "data": {
+        "shortid": "kGl4D8tRg"
+    },
+    "shortid": "mdnXxWldU",
+    "htmlToXlsx": {
+        "htmlEngine": "chrome"
+    },
+    "creationDate": {
+        "$$date": 1699597040189
+    },
+    "modificationDate": {
+        "$$date": 1712171641551
+    },
+    "_id": "DAQ4JyqmL4kM5cVa",
+    "$entitySet": "templates"
+}

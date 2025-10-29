@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Creates required policy in the new account
+Parameters:
+  MainAccount:
+    Description: AWS AccountNumber for main
+    Type: Number
+    Default: 377667345683
+  PipelineBucketName:
+    Description: S3 bucket name for the pipeline
+    Type: String
+    Default: 'cloud-saas-dev-api-pipeline-buildartifactsbucket-16h77aydunghq'
+  PipelineSecondaryBucketName:
+    Description: S3 bucket name for the pipeline
+    Type: String
+    Default: 'cloud-saas-api-us-artifact'
+  KMSKeyARNMulti:
+    Description: KMS Key Arn
+    Type: String
+    Default: 'arn:aws:kms:us-east-1:377667345683:key/mrk-35910bd225f941adb041fda200531464'
+  KMSKeyARNMultiSecond:
+    Description: KMS Key Arn
+    Type: String
+    Default: 'arn:aws:kms:us-west-2:377667345683:key/mrk-35910bd225f941adb041fda200531464'
+  PipelineRoleName:
+    Type: String
+    Default: pipelineRoleCrossAccount
+  CloudformationRoleName:
+    Type: String
+    Default: cloudformationRoleAuth
+
+
+Resources:
+
+  ####    ###    ##     ##
+  ##    ## ##   ###   ###
+  ##   ##   ##  #### ####
+  ##  ##     ## ## ### ##
+  ##  ######### ##     ##
+  ##  ##     ## ##     ##
+  #### ##     ## ##     ##
+
+  PipelineAccountRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref PipelineRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${MainAccount}:root'
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: CrossAccountRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                  - iam:PassRole
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:Put*
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${PipelineBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${PipelineSecondaryBucketName}/*'
+        - PolicyName: CrossAccountCloudfront
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudfront:*
+                Resource: "*"
+        - PolicyName: KMSKeyPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:DescribeKey
+                  - kms:GenerateDataKey*
+                  - kms:Encrypt
+                  - kms:ReEncrypt*
+                  - kms:Decrypt
+                Resource:
+                  - !Ref KMSKeyARNMulti
+                  - !Ref KMSKeyARNMultiSecond
+
+  CloudformationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref CloudformationRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: AdminAccessToCreateResourcesAutomatically
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: "*"
+                Resource: "*"

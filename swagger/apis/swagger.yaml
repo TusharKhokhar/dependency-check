@@ -1,0 +1,1058 @@
+---
+swagger: '2.0'
+info:
+  description: 'printer public APIs documentation'
+  version: 1.0.6
+  title: ePRINTit SAAS
+host: api.eprintitsaas.org/public/
+schemes:
+  - https
+security:
+  - APIKeyHeader: []
+paths:
+  "/login":
+    post:
+      tags:
+        - Users
+      summary: user login api to access the web app
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Created user object
+          required: true
+          schema:
+            "$ref": "#/definitions/Login"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/customerSignup":
+    post:
+      tags:
+        - Customers
+      summary: Customer can sign up using this api
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Created customer object
+          required: true
+          schema:
+            "$ref": "#/definitions/CustomerSignup"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/signedUrls":
+    post:
+      tags:
+        - Upload
+      summary: Generates signed URLs to upload files on s3
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/GenerateMultipleSignedUrls"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/confirmFileUpload":
+    post:
+      tags:
+        - Upload
+      summary: Confirms the file upload to the server
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/ConfirmFileUpload"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/sendStatus":
+    post:
+      tags:
+        - Mobile
+      summary: sends the status to connected clients for websockets
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/SendStatus"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/iot/sts":
+    post:
+      tags:
+        - Kiosk
+      summary: send the thing name and customer id
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/StsCredential"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/domainInfo":
+    get:
+      tags:
+        - Mobile
+      summary: fetch all data related to customer domain like customization, colors, logo etc.
+      description: get all config data
+      operationId: domainInfo
+      produces:
+        - application/json
+      parameters:
+        - name: domain
+          in: query
+          description: domain name of the customer
+          required: false
+          type: string
+        - name: id
+          in: query
+          description: customer id
+          required: false
+          type: string
+        - in: header
+          name: apikey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/card":
+    get:
+      tags:
+        - Users
+      summary: check card number is valid or not
+      description: card number check
+      operationId: card
+      produces:
+        - application/json
+      parameters:
+        - name: cardNumber
+          in: query
+          description: cardNumber of the user
+          required: true
+          type: string
+        - in: header
+          name: apikey
+          type: string
+          required: true
+        - in: header
+          name: tier
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/valid/cardNumber":
+    post:
+      tags:
+        - Users
+        - Kiosk
+      summary: check card number and pin is valid or not
+      description: card number validations
+      operationId: valid/cardNumber
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/CardNumberCred"
+        - in: header
+          name: apikey
+          type: string
+          required: true
+        - in: header
+          name: tier
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/fetchCustomer":
+    get:
+      tags:
+        - Customers
+      summary: fetch all customers
+      description: 
+      opertionId: fetchCustomer
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/releaseCode/{code}":
+    get:
+      tags:
+        - kiosk
+      summary: Release code api to fetch the uploaded file on Kiosk side
+      description:
+      operationId: releaseCode
+      produces:
+        - application/json
+      parameters:
+        - name: code
+          in: path
+          description: getting release code
+          required: true
+          type: string
+        - name: id
+          in: query
+          description: customer id
+          required: true
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/printJobs":
+    get:
+      tags:
+        - kiosk
+      summary: Release code api to fetch the uploaded file on Kiosk side
+      description:
+      operationId: ReleaseCode || Username || LibraryCard || GuestName
+      produces:
+        - application/json
+      parameters:
+        - name: id
+          in: query
+          description: customer id
+          required: true
+          type: string
+        - name: cardNumber
+          in: query
+          description: cardNumber
+          required: false
+          type: string
+        - name: guestName
+          in: query
+          description: guestName
+          required: false
+          type: string
+        - name: releaseCode
+          in: query
+          description: releaseCode
+          required: false
+          type: string
+        - name: userName
+          in: query
+          description: userName
+          required: false
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/generateTheme":
+    get:
+      tags:
+        - Kiosk-Mobile-Web
+      summary: generate the theme for user use as it does not get saved for customer
+      description:
+      operationId: generateTheme
+      produces:
+        - application/json
+      parameters:
+        - name: themeCode
+          in: query
+          description: generating the theme
+          required: true
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/validateActivationCode":
+    get:
+      tags:
+        - kiosk
+      summary: api to cross check activation code
+      description:
+      operationId: validateActivationCode
+      produces:
+        - application/json
+      parameters:
+        - name: activationCode
+          in: query
+          description:
+          required: true
+          type: string
+        - name: serialNumber
+          in: query
+          description:
+          required: false
+          type: string
+        - name: macAddress
+          in: query
+          description:
+          required: false
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/thing":
+    get:
+      tags:
+        - kiosk
+      summary: api to get thing tag id by serial number
+      description:
+      operationId: thingTagInfo
+      produces:
+        - application/json
+      parameters:
+        - name: serialNumber
+          in: query
+          description:
+          required: false
+          type: string
+        - name: macAddress
+          in: query
+          description:
+          required: false
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/configData":
+    get:
+      tags:
+        - kiosk
+      summary: fetch all config data needed for Kiosk App
+      description:
+      operationId: configData
+      produces:
+        - application/json
+      parameters:
+        - name: thingTagId
+          in: query
+          description: 'thing tag id of the kiosk app'
+          required: true
+          type: string
+        - name: version
+          in: query
+          description: 'version of the app'
+          required: false
+          type: string
+        - name: firmware
+          in: query
+          description: 'firmware of the app'
+          required: false
+          type: string
+        - name: ipAddress
+          in: query
+          description: 'ip address of the app'
+          required: false
+          type: string
+        - name: computerName
+          in: query
+          description: 'computer name of the app'
+          required: false
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/countryCodes":
+    get:
+      tags:
+        - Web
+      summary: fetch all contry codes
+      description:
+      operationId: countryCodes
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/version":
+    get:
+      tags:
+        - kiosk
+      summary: fetch latest version of kiosk
+      description:
+      operationId: version
+      produces:
+        - application/json
+      parameters:
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+        - name: thingType
+          in: query
+          description: 'thing type'
+          required: false
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/requestToken":
+    get:
+      tags:
+        - kiosk
+      summary: get the token over the IoT to the kiosk app
+      description: ''
+      operationId: requestToken
+      produces:
+        - application/json
+      parameters:
+        - name: thingTagId
+          in: query
+          description: 'thing tag id of the kiosk app'
+          required: true
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/thingCert/{id}":
+    get:
+      tags:
+        - kiosk
+      summary: fetch the certificates needed to connect to aws iot for a kiosk app
+      description:
+      operationId: thingCert
+      produces:
+        - application/json
+      parameters:
+        - name: id
+          in: path
+          description:
+          required: true
+          type: string
+        - in: header
+          name: apiKey
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type:  json
+  "/validateOtp/{id}":
+    put:
+      tags:
+        - Users
+      summary: Validates the OTP in MFA
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/ValidateOtp"
+        - in: path
+          name: id
+          type: string
+          required: false
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/resetPassword":
+    put:
+      tags:
+        - Users
+      summary: Generates the resetToken to change the password
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/ResetPassword"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/confirmPassword":
+    put:
+      tags:
+        - Users
+      summary: Changes the password using resetToken
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/ConfirmPassword"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/updateJob":
+    put:
+      tags:
+        - Server
+      summary: Updates the job when a file is successfully converted to PDF
+      description: ''
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/UpdateJob"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: subdomain
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/locate":
+    put:
+      tags:
+        - Mobile
+      summary: ''
+      description: 'Used to find locations nearby based on coordinates'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: 'Sequence should be (longitude, latitude)'
+          required: false
+          schema:
+            "$ref": "#/definitions/Locate"
+        - in: header
+          name: apikey
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/refreshToken":
+    put:
+      tags:
+        - refreshToken
+      summary: ''
+      description: 'Used to give new refresh token'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/RefreshToken"
+        - in: header
+          name: tier
+          type: string
+          required: false
+        - in: header
+          name: apikey
+          type: string
+          required: false
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/sso/confirm":
+    post:
+      tags:
+        - login
+      summary: ''
+      description: 'Used for sso confirm'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: ''
+          required: true
+          schema:
+            "$ref": "#/definitions/SSOConfirm"
+        - in: header
+          name: tier
+          type: string
+          required: true
+        - in: header
+          name: apikey
+          type: string
+          required: true
+        - in: header
+          name: subdomain
+          type: string
+          required: true
+      responses:
+        '200':
+          description: successful operation
+          type: json
+definitions:
+  Login:
+    type: object
+    properties:
+      userName:
+        type: string
+      password:
+        type: string
+    ApiResponse:
+      type: object
+  CustomerSignup:
+    type: object
+    properties:
+      Label:
+        type: string
+      CustomerName:
+        type: string
+      CustomerType:
+        type: string
+      DisplayName:
+        type: string
+      Description:
+        type: string
+      DomainName:
+        type: string
+      Tier:
+        type: string
+      Tags:
+        type: array
+        items:
+          type: string
+      Email:
+        type: string
+    ApiResponse:
+      type: object
+  GenerateMultipleSignedUrls:
+    type: object
+    properties:
+      uploadObjectsDetails:
+        type: array
+        items:
+          type: object
+          properties:
+            fileName:
+              type: string
+            extension:
+              type: string
+            contentType:
+              type: string
+    ApiResponse:
+      type: object
+  ConfirmFileUpload:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            color:
+              type: string
+            duplex:
+              type: boolean
+            paperSize:
+              type: string
+            staple:
+              type: string
+            copies:
+              type: integer
+            orientation:
+              type: string
+            pageRange:
+              type: string
+            originalFileNameWithExt:
+              type: string
+            newFileName:
+              type: string
+            uploadStatus:
+              type: boolean
+            totalPagesPerFile:
+              type: integer
+            uploadedFrom:
+              type: string
+            platform:
+              type: string
+            app:
+              type: string
+      notification:
+        type: object
+        properties:
+          email:
+            type: string
+          text:
+            type: string
+      guestName:
+        type: string
+      userName:
+        type: string
+      deviceId:
+        type: string
+      deviceName:
+        type: string
+      libraryCard:
+        type: string
+      customerLocation:
+        type: string
+      totalCost:
+        type: integer
+      customerId:
+        type: string
+      recordId:
+        type: string
+      locationId:
+        type: string
+      automaticDelivery:
+        type: boolean
+    ApiResponse:
+      type: object
+  ValidateOtp:
+    type: object
+    properties:
+      otp:
+        type: string
+    ApiResponse:
+      type: object
+  ResetPassword:
+    type: object
+    properties:
+      userName:
+        type: string
+    ApiResponse:
+      type: object
+  ConfirmPassword:
+    type: object
+    properties:
+      resetToken:
+        type: string
+      password:
+        type: string
+    ApiResponse:
+      type: object
+  UpdateJob:
+    type: object
+    properties:
+      fileName:
+        type: string
+      customerId:
+        type: string
+    ApiResponse:
+      type: object
+  Locate:
+    type: object
+    properties:
+      coordinates:
+        type: array
+        items:
+          type: number
+      maximumDistance:
+        type: integer
+      customerId:
+        type: string
+    ApiResponse:
+      type: object
+  SendStatus:
+    type: object
+    properties:
+      releaseCode:
+        type: string
+      status:
+        type: boolean
+      customerId:
+        type: string
+      sessionId:
+        type: string
+      tier:
+        type: string
+    ApiResponse:
+      type: object
+  RefreshToken:
+    type: object
+    properties:
+      token:
+        type: string
+    ApiResponse:
+      type: object
+  SSOConfirm:
+    type: object
+    properties:
+      hashId:
+        type: string
+      authId:
+        type: string
+  CardNumberCred:
+    type: object
+    properties:
+      cardNumber:
+        type: string
+      pin:
+        type: string
+    ApiResponse:
+      type: object
+  StsCredential:
+    type: object
+    properties:
+      thingName:
+        type: string
+      customerId:
+        type: string
+    ApiResponse:
+      type: object

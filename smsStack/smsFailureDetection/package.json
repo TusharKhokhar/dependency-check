@@ -1,0 +1,17 @@
+{
+  "name": "sms-failure-detection-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to detect SMS failures from CloudWatch logs and call audit API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "mongodb": "^6.15.0",
+    "aws4": "^1.13.0"
+  },
+  "keywords": ["aws", "lambda", "sms", "mongodb", "failure-detection", "audit"],
+  "author": "",
+  "license": "ISC"
+}
+

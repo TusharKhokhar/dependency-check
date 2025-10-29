@@ -1,0 +1,26 @@
+# For local development use
+
+service: easybooking-api
+
+
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  timeout: 30
+  lambdaHashingVersion: '20201221'
+  stage: public
+
+functions:
+  openid:
+    handler: app.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+      - http:
+          path: /{proxy+}
+          method: ANY
+
+plugins:
+  - serverless-offline

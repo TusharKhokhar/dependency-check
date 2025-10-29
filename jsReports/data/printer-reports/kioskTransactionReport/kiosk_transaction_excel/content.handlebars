@@ -1,0 +1,77 @@
+<html>
+<head>
+	<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+	<style>
+		{#asset kiosk_transaction_styles.css @encoding=utf8}
+	</style>
+</head>
+<body>
+    <table id="table-width">
+    {{#each data.Transactions}}
+            {{#if Things.length}}
+
+            <tr class="information">
+                <td colspan="8">
+                    <tr class="site-width"><td class="report-sub-title font-size-inherit bold">Customer Name : {{_id.CustomerName}}</td></tr>
+
+                </td>
+            </tr>
+            {{#each Things}}
+                        <tr class="site-width"><td class="report-sub-title font-size-inherit bold">Thing Name : {{_id.ThingName}}</td></tr>
+                        <tr>
+                            <td class="machine-width"><span class="report-sub-title font-size-inherit">&nbsp; &nbsp;&nbsp;&nbsp;{{_id.TransactionType}}</span></td>
+                        </tr>
+                        <tr>
+                            <td class="table-heading table-th bold width-90px white-right-border">Transaction Type</td>
+                            <td class="table-heading table-th bold width-90px white-right-border">Payment Type</td>
+                            <td class="table-heading table-th bold width-90px  white-right-border">Amount</td>
+                            <td class="table-heading table-th bold width-90px  white-right-border">Total Pages</td>
+                       </tr>
+                        {{#each TransactionTypes}}
+                            <tr class="dash">
+                                <td class="right-aligned width-90px bold ">{{_id.TransactionType}}</td>
+                                <td class="right-aligned width-90px bold "></td>
+                                <td class="right-aligned width-90px bold ">{{../../../data.currency}}{{calculateTotalAmount data ../../../data.decimal ../../../data.decimalSeparator}}</td>
+                                <td class="right-aligned width-130px bold">{{calculateTotal data ../../../data.decimal ../../../data.decimalSeparator}}</td>
+
+                            </tr>
+
+                            {{#each data}}
+                                <tr>
+                                    <td class="right-aligned width-90px"></td>
+                                    <td class="right-aligned width-90px">{{_id.PaymentType}}</td>
+                                    <td class="right-aligned width-90px">{{../../../../data.currency}}{{roundNumber TotalAmount ../../../../data.decimal ../../../../data.decimalSeparator}}</td>
+                                    <td class="right-aligned width-130px">{{hasDecimal PageCount ../../../../data.decimalSeparator}}</td>
+                                                                   </tr>
+                            {{/each}} <!-- end document types-->
+
+                        {{/each}}  <!-- end delivery types-->
+                        <tr class=""><td>&nbsp;</td></tr>
+                        <tr class="total bold table-th">
+                            <td class="right-aligned bold width-90px top-border-color">Total:</td>
+                            <td class="right-aligned bold width-90px top-border-color"></td>
+                            <td class="right-aligned bold width-90px top-border-color">{{../../data.currency}}{{calculateFloorWiseTotalAmount ../../data.decimal ../../data.decimalSeparator}}</td>
+                            <td class="right-aligned bold width-130px top-border-color">{{calculateFloorWiseTotalCost ../../data.decimal ../../data.decimalSeparator}}</td>
+                            </tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+            {{/each}} <!-- end locations -->
+
+
+        <tr class=""><td>&nbsp;</td></tr>
+        <tr class=""><td>&nbsp;</td></tr>
+        {{/if}}
+    {{/each}}<!-- end sites -->
+    
+    {{#if data.Transactions}}
+    <tr class="grand-total-table top-border">
+                <td class="table-heading bold table-th width-90px top-border-color font-size-inherit"> Grand Total:</td>
+                <td class="table-heading bold table-th width-90px top-border-color font-size-inherit"></td>
+                <td class="table-heading bold table-th width-90px top-border-color font-size-inherit">{{data.currency}}{{calculateGrandTotalAmount data.decimal data.decimalSeparator}}</td>
+                <td class="table-heading bold table-th width-90px top-border-color font-size-inherit">{{calculateGrandTotal data.decimal data.decimalSeparator}}</td>
+                </tr>
+            {{resetFlags}}
+    </table>
+    {{/if}}
+</body>
+</html>

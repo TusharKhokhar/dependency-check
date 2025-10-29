@@ -1,0 +1,17 @@
+{
+    "name": "transaction_html",
+    "engine": "handlebars",
+    "recipe": "html",
+    "data": {
+        "shortid": "kGl4D8tRg"
+    },
+    "shortid": "oa__jWgo5",
+    "creationDate": {
+        "$$date": 1699597012507
+    },
+    "modificationDate": {
+        "$$date": 1718715842751
+    },
+    "_id": "3xlgjB2D71NSnqzp",
+    "$entitySet": "templates"
+}

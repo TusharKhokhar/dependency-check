@@ -1,0 +1,25 @@
+<br>
+<div class="title-container">
+    <div>
+        <b style="padding-left:5px; color:orangered">Your Job has failed</b>
+    </div>
+</div>
+<br>
+<div class="form-group">
+    <% if (data.customerUrl) { %>
+    <img src=<%= data.customerUrl %> alt="" style="width:50px; height:30px" width="50" height="30" /> <b style="padding-left: 5px; font-size: 20px;"><%= data.CustomerName %></b>
+    <% } %>
+    <% if (!data.customerUrl) { %>
+    <b style="padding-left: 5px; font-size: 20px;"><%= data.CustomerName %></b>
+    <% } %>
+</div>
+<br>
+<% if (data.message) { %>
+    <p>><%= data.message %></p>
+<% } %>
+<br>
+<h4 style="background-color: lightgray">List of files which we don't support: </h4>
+<% data.files.forEach((post, index) => { %>
+<%=index + 1%>) <%= post %><br>
+<% }) %>
+<br>

@@ -1,0 +1,292 @@
+---
+swagger: '2.0'
+info:
+  description: 'Payment gateways APIs documentation'
+  version: 1.0.6
+  title: ePRINTit SAAS Dev
+host: api.eprintitsaas.org/public/
+schemes:
+  - https
+security:
+  - APIKeyHeader: []
+paths:
+  "/eghl/response":
+    post:
+      tags:
+        - Webhooks
+      summary: "Saves eGHL transaction response"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/eGHL'
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/stripe/webhook/{id}":
+    post:
+      tags:
+        - Webhooks
+      summary: "Saves Stripe transaction response"
+      consumes:
+        - application/json
+        - application/xml
+      produces:
+        - application/json
+        - application/xml
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+          description: This is the customerId of that merchant, who's going to be paid.
+        - in: header
+          name: Stripe-Signature
+          type: string
+          required: true
+        - in: body
+          name: payload
+          required: true
+          schema:
+            type: object
+            properties:
+              rawBody:
+                type: string
+                format: binary
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/xendit/response/{id}":
+    post:
+      tags:
+        - Webhooks
+      summary: "Saves Xendit transaction response"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: id
+          required: true
+          type: string
+          description: This is the customerId of that merchant, who's going to be paid.
+        - in: body
+          name: payload
+          required: true
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/authorize/response":
+    post:
+      tags:
+        - Webhooks
+      summary: "Saves Authorize.net transaction response"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/AuthorizeNet'
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/braintree/transaction":
+    post:
+      tags:
+        - Webhooks
+      summary: "Sends nonce to Braintree, and saves transaction response"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Braintree'
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/moneris/response":
+    post:
+      tags:
+        - Webhooks
+      summary: "Saves Moneris transaction response"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Moneris'
+      responses:
+        '200':
+          description: successful operation
+          type: json
+  "/heartland/response":
+    post:
+      tags:
+        - Webhooks
+      summary: "Saves Heartland transaction response"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Heartland'
+      responses:
+        '200':
+          description: successful operation
+          type: json
+
+definitions:
+  eGHL:
+    properties:
+      TxnID:
+        type: string
+      Amount:
+        type: string
+      CurrencyCode:
+        type: string
+      TxnMessage:
+        type: string
+      CardHolder:
+        type: string
+      TxnStatus:
+        type: string
+      Param6:
+        type: string
+      Param7:
+        type: string
+    ApiResponse:
+      type: object
+  AuthorizeNet:
+    properties:
+      x_trans_id:
+        type: string
+      x_first_name:
+        type: string
+      x_last_name:
+        type: string
+      x_email:
+        type: string
+      x_amount:
+        type: string
+      x_response_code:
+        type: string
+      x_response_reason_text:
+        type: string
+      x_city:
+        type: string
+      x_country:
+        type: string
+      x_state:
+        type: string
+      x_type:
+        type: string
+      MerchantID:
+        type: string
+      CustomerID:
+        type: string
+      Username:
+        type: string
+      TransactionStartTime:
+        type: string
+    ApiResponse:
+      type: object
+  Braintree:
+    properties:
+      payment_method_nonce:
+        type: string
+      amount:
+        type: string
+      merchantID:
+        type: string
+      customerID:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      email:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      transactionStartTime:
+        type: string
+      successURL:
+        type: string
+      failureURL:
+        type: string
+    ApiResponse:
+      type: object
+  Moneris:
+    properties:
+      ticket:
+        type: string
+      merchantId:
+        type: string
+      transactionStartTime:
+        type: string
+    ApiResponse:
+      type: object
+  Heartland:
+    properties:
+      RESULT:
+        type: string
+      ORDER_ID:
+        type: string
+      MESSAGE:
+        type: string
+      AMOUNT:
+        type: string
+      HPP_CUSTOMER_FIRSTNAME:
+        type: string
+      HPP_CUSTOMER_LASTNAME:
+        type: string
+      HPP_BILLING_CITY:
+        type: string
+      HPP_CUSTOMER_EMAIL:
+        type: string
+      CUSTOM_MERCHANT_ID:
+        type: string
+      CUSTOMER_ID:
+        type: string
+      BILLING_CO:
+        type: string
+      CUSTOM_CURRENCY:
+        type: string
+      TRANSACTION_START_TIME:
+        type: string
+    ApiResponse:
+      type: object

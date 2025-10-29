@@ -1,0 +1,506 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy Fargate Service with NLB and Route 53 Alias across multiple regions
+
+Mappings:
+  EnvironmentConfig:
+    dev:
+      MinTask: 1
+      MaxTask: 2
+    qa:
+      MinTask: 1
+      MaxTask: 2
+    prod:
+      MinTask: 1
+      MaxTask: 5
+
+Parameters:
+  VPCCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC
+  PublicSubnet1CIDR:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for the first public subnet
+  PublicSubnet2CIDR:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for the second public subnet
+  DomainName:
+    Type: String
+    Description: The domain name to be used (e.g., www.example.com)
+#    Default: ipps.eprintitsaas.org
+  HostedZoneID:
+    Type: String
+    Description: The Route 53 Hosted Zone ID for the domain
+#    Default: Z06090811AQGD1FCWU3TD
+  ACMCertificate:
+    Type: String
+    Description: Certificate arn
+#    Default: arn:aws:acm:us-east-1:377667345683:certificate/83fe9b70-4b01-4885-be4c-b76c37a99fc2
+  BaseDomainName:
+    Type: String
+    Description: base domain name
+#    Default: eprintitsaas.org
+  RegionType:
+    Type: String
+    Description: Certificate arn
+#    Default: pri
+  Stage:
+    Type: String
+    Description: stage
+#    Default: local
+  MongoDBReadWriteAccess:
+    Type: String
+    Description: MongoDBReadWriteAccess
+#    Default: ''
+  DatabaseName:
+    Type: String
+    Description: DatabaseName
+#    Default: saas-dev
+  ReplicationBucketName:
+    Type: String
+    Description: ReplicationBucketName
+#    Default: ''
+  MongoDBConnection:
+    Type: String
+    Description: MongoDBConnection
+#    Default: main.uh6ww
+  Domain:
+    Type: String
+    Description: Domain
+#    Default: ''
+
+Resources:
+  FargateSecurityGroup:
+    DependsOn: LoadBalancerSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound traffic for the Fargate service
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: fargate-service-nlb
+      GroupDescription: "Allow HTTPS"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+        - IpProtocol: tcp
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: tcp
+          CidrIp: "0.0.0.0/0"
+          FromPort: 631
+          ToPort: 631
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:ecs:*:${AWS::AccountId}:task/*"
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Policies:
+        - PolicyName: ECSAllowS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::*
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:ecs:*:${AWS::AccountId}:task/*"
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ECSAllowAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::*
+              - Effect: Allow
+                Action:
+                  - "iot:*"
+                  - "secretsmanager:GetSecretValue"
+                "Resource": "*"
+
+  ECSServiceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+      Path: /
+      Policies:
+        - PolicyName: ECSAllowCreateLogGroup
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Statement1
+                Effect: Allow
+                Action: 'logs:CreateLogGroup'
+                Resource: '*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  # VPC Definition
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: FargateInternetGateway
+
+  # Attach Internet Gateway to the VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1CIDR
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2CIDR
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.4.0/24
+      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet2
+
+  # Route Table for the Public Subnets
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  # Route to the Internet Gateway for Public Subnets
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Associate Route Table with Public Subnet 1
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  # Associate Route Table with Public Subnet 2
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Network Load Balancer Definition
+  IppNetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub 'IppFargateNLB-${Stage}'
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Scheme: internet-facing
+      Type: network
+      SecurityGroups:
+        - !GetAtt LoadBalancerSecurityGroup.GroupId
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: TCP
+      TargetType: ip
+      HealthCheckProtocol: TCP
+      HealthCheckPort: traffic-port
+      TargetGroupAttributes:
+        - Key: preserve_client_ip.enabled
+          Value: true
+
+  NLBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref IppNetworkLoadBalancer
+      Protocol: TCP
+      Port: 631
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  NLBListenerTls:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref IppNetworkLoadBalancer
+      Protocol: TLS
+      Port: 443
+      SslPolicy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+      Certificates:
+        - CertificateArn: !Ref ACMCertificate
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  NLBListenerHttp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref IppNetworkLoadBalancer
+      Protocol: TCP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: FargateClusterEcs
+
+  FargateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: FargateTask
+      Cpu: "1024"
+      Memory: "3072"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ECSServiceExecutionRole
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: ippserver
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/ipp-service:latest"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+              HostPort: 80
+              AppProtocol: "http"
+          Environment:
+            - Name: domainName
+              Value: !Ref DomainName
+            - Name: region
+              Value: !Sub "${AWS::Region}"
+            - Name: environment
+              Value: 'server'
+            - Name: Stage
+              Value: !Ref Stage
+            - Name: mongoDBConnection
+              Value: !Ref MongoDBConnection
+            - Name: dbName
+              Value: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+            - Name: awsAccountNumber
+              Value: !Sub "${AWS::AccountId}"
+            - Name: MongoDBReadWriteAccess
+              Value: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            - Name: S3BucketTenantUploadsConverted
+              Value: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              mode: non-blocking
+              max-buffer-size: 50m
+              awslogs-group: LogGroup
+              awslogs-region: !Sub "${AWS::Region}"
+              awslogs-create-group: "true"
+              awslogs-stream-prefix: efs-task
+      RuntimePlatform:
+        CpuArchitecture: "X86_64"
+        OperatingSystemFamily: "LINUX"
+
+  FargateIppService:
+    Type: AWS::ECS::Service
+    DependsOn: NLBListener       # Line Added
+    Properties:
+      Cluster: !Ref ECSCluster
+      SchedulingStrategy: REPLICA
+      ServiceName: !Sub "ipp-service-${Stage}"
+      TaskDefinition: !Ref FargateTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref FargateSecurityGroup
+      PlatformVersion: LATEST
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      DeploymentController:
+        Type: ECS
+      LoadBalancers:
+        - ContainerName: ippserver
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+
+  ECSAutoScalingTarget:
+    DependsOn: FargateIppService
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity:
+        Fn::FindInMap:
+          - EnvironmentConfig
+          - Ref: Stage
+          - MaxTask
+      MinCapacity:
+        Fn::FindInMap:
+          - EnvironmentConfig
+          - Ref: Stage
+          - MinTask
+      ResourceId: !Sub "service/FargateClusterEcs/ipp-service-${Stage}"
+      RoleARN: !GetAtt ECSTaskExecutionRole.Arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  ECSAutoScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ECSAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ECSAutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 60.0
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+
+  Route53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Sub "ipp.${DomainName}"
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt IppNetworkLoadBalancer.DNSName
+        HostedZoneId: !GetAtt IppNetworkLoadBalancer.CanonicalHostedZoneID

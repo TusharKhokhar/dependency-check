@@ -1,0 +1,20 @@
+{
+    "name": "printer_usage_pdf",
+    "engine": "handlebars",
+    "recipe": "chrome-pdf",
+    "data": {
+        "shortid": "wEAQ4A6Iv"
+    },
+    "shortid": "HnSixVjW5",
+    "chrome": {
+        "printBackground": true
+    },
+    "creationDate": {
+        "$$date": 1657631864808
+    },
+    "modificationDate": {
+        "$$date": 1725549825946
+    },
+    "_id": "XPsemHrgorVpoVML",
+    "$entitySet": "templates"
+}

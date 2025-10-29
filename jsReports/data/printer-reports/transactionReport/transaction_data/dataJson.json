@@ -1,0 +1,278 @@
+{
+  "data": {
+    "date": "July 1st 2022 12:00am to July 22nd 2022 11:59pm",
+    "logo": "https://bigxpose-staging-s3buckettenantuploads-1wvdvfn9ctcvc.s3.amazonaws.com/Logos/629a663abf686e00095dc16c/web.png",
+    "PrimaryColor": "#0000FF",
+    "decimal": 2,
+    "decimalSeparator":",",
+    "currency": "$",
+    "Transactions": [
+      {
+          "CustomerName": "Admin",
+        "TransactionTypes": [
+          {
+            "_id": {
+              "PaymentType": "Credit Card"
+            },
+            "data": [
+              
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "CBORD"
+            },
+            "data": [
+              
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "Cash"
+            },
+            "data": [
+              
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "free"
+            },
+            "data": [
+              
+            ]
+          }
+        ]
+      },
+      {
+          "CustomerName": "ABC Customer",
+        "TransactionTypes": [
+          {
+            "_id": {
+              "PaymentType": "Credit Card"
+            },
+            "data": [
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 1,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Grayscale"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "CBORD"
+            },
+            "data": [
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "Cash"
+            },
+            "data": [
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "free"
+            },
+            "data": [
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+          "CustomerName": "ABC Customer",
+        "TransactionTypes": [
+          {
+            "_id": {
+              "PaymentType": "Credit Card"
+            },
+            "data": [
+              {
+                "ColorPages": 11,
+                "GrayscalePages": 1,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 30,
+                "TotalPages": 2
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Grayscale"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "CBORD"
+            },
+            "data": [
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          },
+          {
+            "_id": {
+              "PaymentType": "Cash"
+            },
+            "data": [
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              },
+              {
+                "ColorPages": 0,
+                "GrayscalePages": 0,
+                "_id": {
+                  "JobDeliveryMethod": "web",
+                  "Color": "Color"
+                },
+                "TotalCost": 0,
+                "TotalPages": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

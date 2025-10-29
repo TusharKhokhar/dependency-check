@@ -1,0 +1,641 @@
+#AWSTemplateFormatVersion: 2010-09-09
+Description: cloud template to deploy ui resources
+Transform:
+  - AWS::Serverless-2016-10-31
+
+# ---------- Parameters -------------------------------------------------------
+Parameters:
+  BucketName:
+    Type: String
+  DomainName:
+    Type: String
+  MultiregionEndpoint:
+    Type: String
+  WebSocketDomainName:
+    Type: String
+  WildCardDomain:
+    Type: String
+  RootDomainName:
+    Type: String
+  HostedZoneID:
+    Type: String
+  StagingAccountNo:
+    Type: Number
+  MainAccountNo:
+    Type: Number
+  InvalidateCacheLambdaArn:
+    Type: String
+  BackupRegion:
+    Description: failover region
+    Type: String
+  ReplicationBucketName:
+    Description: replication bucket name
+    Type: String
+  ReplicationRegion:
+    Description: replication bucket region
+    Type: String
+  FixedCloudfrontZoneId:
+    Description: FixedCloudfrontZoneId
+    Type: String
+  Stage:
+    Description: Stage
+    Type: String
+  RegionHealthEndpoint:
+    Description: Region Health Endpoint
+    Type: String
+
+# ---------- Resources lists --------------------------------------------------
+Resources:
+  S3Hosting:
+    DependsOn: TriggerLambda
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      WebsiteConfiguration:
+        ErrorDocument: 'index.html'
+        IndexDocument: 'index.html'
+      ReplicationConfiguration:
+        Role: !GetAtt
+          - WorkItemBucketBackupRole
+          - Arn
+        Rules:
+          - Destination:
+              Bucket: !Sub "arn:aws:s3:::${ReplicationBucketName}"
+              StorageClass: STANDARD
+            Id: Backup
+            Prefix: ''
+            Status: Enabled
+      VersioningConfiguration:
+        Status: Enabled
+
+  ReplicationBucket:
+    Properties:
+      Code:
+        ZipFile: |
+          const { S3Client, CreateBucketCommand, PutBucketVersioningCommand, PutBucketWebsiteCommand } = require('@aws-sdk/client-s3');
+          const response = require('cfn-response');
+
+          exports.handler = async (event, context) => {
+            const s3 = new S3Client({ region: event.ResourceProperties.DestBucketRegion });
+
+            try {
+              if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+                const bucketParams = {
+                  Bucket: event.ResourceProperties.DestBucketName
+                };
+                await s3.send(new CreateBucketCommand(bucketParams));
+                console.log('Bucket created successfully');
+
+                const versioningParams = {
+                  Bucket: event.ResourceProperties.DestBucketName,
+                  VersioningConfiguration: {
+                    Status: 'Enabled'
+                  }
+                };
+                await s3.send(new PutBucketVersioningCommand(versioningParams));
+                console.log('Bucket versioning enabled successfully');
+
+                const staticHostParams = {
+                  Bucket: event.ResourceProperties.DestBucketName,
+                  WebsiteConfiguration: {
+                    ErrorDocument: {
+                      Key: 'index.html'
+                    },
+                    IndexDocument: {
+                      Suffix: 'index.html'
+                    }
+                  }
+                };
+                await s3.send(new PutBucketWebsiteCommand(staticHostParams));
+                console.log('Bucket website configuration enabled successfully');
+
+                response.send(event, context, response.SUCCESS, {}, event.ResourceProperties.DestBucketName);
+              } else if (event.RequestType === 'Delete') {
+                console.log(`Please delete the ${event.PhysicalResourceId} bucket.`);
+                response.send(event, context, response.SUCCESS, {}, event.PhysicalResourceId);
+              }
+            } catch (error) {
+              console.error(error);
+              response.send(event, context, response.FAILED, error);
+            }
+          };
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+    Type: "AWS::Lambda::Function"
+
+  TriggerLambda:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt ReplicationBucket.Arn
+      DestBucketName: !Ref ReplicationBucketName
+      DestBucketRegion: !Ref ReplicationRegion
+
+  LambdaExecutionRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Effect: Allow
+                Resource: "arn:aws:logs:*:*:*"
+              - Action:
+                  - "s3:*"
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: LambdaExecutionRolePolicyBucket
+    Type: "AWS::IAM::Role"
+
+  WorkItemBucketBackupRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:s3:::*"
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+  BucketBackupPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetReplicationConfiguration'
+              - 's3:ListBucket'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref BucketName
+          - Action:
+              - 's3:GetObjectVersion'
+              - 's3:GetObjectVersionAcl'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref BucketName
+                  - /*
+          - Action:
+              - 's3:ReplicateObject'
+              - 's3:ReplicateDelete'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - !Sub "arn:aws:s3:::${ReplicationBucketName}"
+                  - /*
+      PolicyName: BucketBackupPolicy
+      Roles:
+        - !Ref WorkItemBucketBackupRole
+
+  CDNOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "Cloudfront Origin identity for ${DomainName}"
+
+  ACMCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Ref WildCardDomain
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneID
+  PolicyHeaderResponse:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: ResponseHeadersSecurity
+        SecurityHeadersConfig:
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            Override: true
+            IncludeSubdomains: false
+            Preload: false
+  CDN:
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref DomainName
+          - !Ref WildCardDomain
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: True
+          TargetOriginId: !Sub "S3-origin-${S3Hosting}"
+          ViewerProtocolPolicy: redirect-to-https
+          ResponseHeadersPolicyId: !Ref PolicyHeaderResponse
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        Enabled: True
+        HttpVersion: http2
+        IPV6Enabled: True
+        Origins:
+          - DomainName: !GetAtt S3Hosting.DomainName
+            Id: !Sub "S3-origin-${S3Hosting}"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CDNOriginIdentity}"
+          - DomainName: !Sub "${ReplicationBucketName}.s3-website.${ReplicationRegion}.amazonaws.com"
+            Id: !Sub "S3-origin-${ReplicationBucketName}"
+            CustomOriginConfig:
+              OriginProtocolPolicy: match-viewer
+        OriginGroups:
+          Quantity: 1
+          Items:
+            - Id: !Sub "Origin-group-S3-origin-${S3Hosting}"
+              FailoverCriteria:
+                StatusCodes:
+                  Quantity: 5
+                  Items:
+                    - 500
+                    - 504
+                    - 503
+                    - 502
+                    - 404
+              Members:
+                Quantity: 2
+                Items:
+                  - OriginId: !Sub "S3-origin-${S3Hosting}"
+                  - OriginId: !Sub "S3-origin-${ReplicationBucketName}"
+        PriceClass: PriceClass_All # PriceClass_100 / PriceClass_200 / PriceClass_All
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+        ViewerCertificate:
+          AcmCertificateArn: !Ref ACMCertificate
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+
+#  CloudFrontFunction:
+#    Type: AWS::CloudFront::Function
+#    Properties:
+#      Name: UpdatePath
+#      AutoPublish: true
+#      FunctionCode: !Sub |
+#        function handler(event) {
+#            var response = event.response;
+#            var headers = response.headers;
+#            headers['strict-transport-security'] = { value: 'max-age=63072000;};
+#            // headers['content-security-policy'] = { value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"};
+#            // headers['x-content-type-options'] = { value: 'nosniff'};
+#            // headers['x-frame-options'] = {value: 'DENY'};
+#            // headers['x-xss-protection'] = {value: '1; mode=block'};
+#            return response;
+#        }
+#      FunctionConfig:
+#        Comment: !Sub Append index.html to folder paths
+#        Runtime: cloudfront-js-1.0
+
+  S3HostingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Hosting
+      PolicyDocument:
+        Statement:
+          - Sid: ''
+            Action:
+              - "s3:GetObject"
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CDNOriginIdentity}"
+            Resource: !Sub "arn:aws:s3:::${S3Hosting}/*"
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action:
+              - s3:ListBucket
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !Sub 'arn:aws:s3:::${BucketName}/*'
+              - !Sub 'arn:aws:s3:::${BucketName}'
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${MainAccountNo}:root'
+            Action:
+              - s3:ListBucket
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !Sub 'arn:aws:s3:::${BucketName}/*'
+              - !Sub 'arn:aws:s3:::${BucketName}'
+
+
+  DNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Ref RootDomainName
+      RecordSets:
+        - AliasTarget:
+            DNSName: !GetAtt CDN.DomainName
+            HostedZoneId: !Ref FixedCloudfrontZoneId # CloudFront hosted zone ID is fixed
+          Name: !Ref DomainName
+          Type: A
+
+  DNSForSubDomain:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Ref RootDomainName
+      RecordSets:
+        - AliasTarget:
+            DNSName: !GetAtt CDN.DomainName
+            HostedZoneId: !Ref FixedCloudfrontZoneId # CloudFront hosted zone ID is fixed
+          Name: !Ref WildCardDomain
+          Type: A
+
+  HealthcheckRegion:
+    Type: "AWS::Route53::HealthCheck"
+    Properties:
+      HealthCheckConfig:
+        Port: "443"
+        Type: "HTTPS_STR_MATCH"
+        SearchString: "ok"
+        ResourcePath: "/Prod/healthcheck"
+        FullyQualifiedDomainName: !Ref RegionHealthEndpoint
+        RequestInterval: "30"
+        FailureThreshold: "2"
+        Regions:
+          - "us-east-1"
+          - "us-west-2"
+          - "us-west-1"
+
+  ScheduleChange:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 30
+      CodeUri: ../scheduleChange/
+      Description: A Lambda function to update event bridge rule
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          awsAccountNumber: !Ref AWS::AccountId
+      Role: !GetAtt ScheduleChangeRole.Arn
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      
+  ScheduleChangeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-ScheduleChangeRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: ScheduleChangeRolePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'events:Put*'
+                  - 'events:ListRules*'
+                  - 'events:DisableRule*'
+                  - 'events:EnableRule*'
+                Resource: '*'
+
+  AlarmSNSTopicKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for encrypting the SNS topic"
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "Allow administration of the key"
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"  # This is acceptable in key policies
+          - Sid: "Allow SNS and CloudWatch to use the key"
+            Effect: Allow
+            Principal:
+              Service:
+                - sns.amazonaws.com
+                - cloudwatch.amazonaws.com
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:DescribeKey"
+            Resource: "*"  
+            Condition:
+              StringLike:  # Changed from StringEquals to StringLike
+                "kms:ViaService": "sns.*.amazonaws.com"  # Using wildcard for all regions
+
+  AlarmSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !GetAtt ScheduleChange.Arn
+          Protocol: "lambda"  # Changed to lowercase
+      TopicName: "disasterRecovery"
+      KmsMasterKeyId: !Ref AlarmSNSTopicKey  # Using the new KMS key
+  
+  FailOverAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmDescription: FailOver
+      MetricName: HealthCheckStatus
+      Namespace: AWS/Route53
+      Statistic: Minimum
+      Period: 600
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: missing
+      AlarmActions:
+        - Ref: AlarmSNSTopic
+      OKActions:
+        - Ref: AlarmSNSTopic
+      Dimensions:
+        - Name: HealthCheckId
+          Value: !Ref HealthcheckRegion
+
+  PermissionForEventsToInvokeQuotaBalance:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "ScheduleChange"
+      Action: "lambda:InvokeFunction"
+      Principal: "sns.amazonaws.com"
+      SourceArn: !Ref AlarmSNSTopic
+
+  RegionEndpointPrimaryFailoverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: PRIMARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "${HostedZoneID}-${Stage}-endpoint-region-api"
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref MultiregionEndpoint
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt CustomDomain.RegionalDomainName
+
+  EmailPrimaryFailoverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: PRIMARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "${HostedZoneID}-${Stage}-endpoint-region-ses"
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref DomainName
+      Type: MX
+      TTL: '60'
+      ResourceRecords:
+        - !Sub '10 inbound-smtp.${AWS::Region}.amazonaws.com'
+
+  CustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref MultiregionEndpoint
+      RegionalCertificateArn: !Ref ACMCertificate
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  CustomDomainWebSocket:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref WebSocketDomainName
+      RegionalCertificateArn: !Ref ACMCertificate
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  CustomDomainWebSocketPartner:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Sub "partner-${WebSocketDomainName}"
+      RegionalCertificateArn: !Ref ACMCertificate
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+#  Route53RecordSetGroup:
+#    Type: AWS::Route53::RecordSet
+#    Properties:
+#      Name: !Ref WebSocketDomainName
+#      Type: A
+#      HostedZoneId: !Ref HostedZoneID
+#      AliasTarget:
+#        DNSName: !GetAtt CustomDomainWebSocket.RegionalDomainName
+#        EvaluateTargetHealth: false
+#        HostedZoneId: !GetAtt CustomDomainWebSocket.RegionalHostedZoneId
+
+  Route53RecordSetGroupWebsocketPrimary:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: PRIMARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "${HostedZoneID}-${Stage}-endpoint-region-api-websocket"
+      HostedZoneId:  !Ref HostedZoneID
+      Name: !Ref WebSocketDomainName
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt CustomDomainWebSocket.RegionalDomainName
+
+  Route53RecordSetGroupWebsocketPartnerPrimary:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: PRIMARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "${HostedZoneID}-${Stage}-endpoint-region-api-websocket-part"
+      HostedZoneId:  !Ref HostedZoneID
+      Name: !Sub "partner-${WebSocketDomainName}"
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt CustomDomainWebSocketPartner.RegionalDomainName
+
+Outputs:
+  BucketArn:
+    Value: !Ref S3Hosting
+  CustomDomainRegional:
+    Value: !GetAtt CustomDomain.RegionalDomainName
+  ACMCertificateArn:
+    Value: !Ref ACMCertificate

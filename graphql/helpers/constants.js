@@ -1,0 +1,41 @@
+const { Stage, domainName } = require("../config/config");
+
+module.exports = {
+  STANDARD_TIER: 'standard',
+  API_AWS_VERSION: '2018-11-29',
+  EGHL_PAGE_TIMEOUT: "780",
+  PAYMENT_TYPE: {
+    EGHL: "eGHL",
+    STRIPE: "Stripe",
+    BRAINTREE: "Braintree",
+    HEARTLAND: "Heartland",
+    AUTHORIZENET: "AuthorizeNet",
+    XENDIT: "Xendit",
+    MONERIS: "Moneris",
+    NAYAX: "Nayax",
+    IPAY88: "iPay88",
+    PORTONE: "PortOne",
+  },
+  THIRD_PARTY_PROTON: "ProtonIntegration",
+  THIRD_PARTY_EMAIL: "EmailIntegration",
+  THIRD_PARTY_ILLIAD: "IlliadIntegration",
+  THIRD_PARTY_FTP: "FTPIntegration",
+  THIRD_PARTY_FAX: "FaxIntegration",
+  XENDIT_INVOICE_DURATION: '600',
+  MONERIS_ENV: Stage === 'prod' ? 'prod' : 'qa',
+  MONERIS_URL: Stage === 'prod' ? 'https://gateway.moneris.com/chktv2/request/request.php' : 'https://gatewayt.moneris.com/chktv2/request/request.php',
+  AUTHORIZENET_PRODUCT_ID: '9c0d93a80a86052dfe10',
+  DEFAULT_CUSTOMER_LOGO: `https://${domainName}/eprintit-logo-color.png`,
+  DEFAULT_PRODUCT_NAME: 'ePRINTit',
+  NAYAX_REQUEST_URL: 'https://lynx.nayax.com/Payment/v1/Eprintit/RemoteStart',
+  ATRIUM_ENDPOINT: `/integrations/eprintit/json`,
+  ATRIUM_GET_TOKEN: `https://apitestadmin.atriumcampus.com/oauth/get/token`,
+  PAYMENT_GATEWAYS_WEBHOOKS: {
+    STRIPE: `https://api.${domainName}/public/stripe/webhook`,
+    AUTHORIZENET: `https://api.${domainName}/public/authorize/response`,
+    XENDIT: `https://api.${domainName}/public/xendit/response`,
+    PORTONE: `https://api.${domainName}/public/portone/response`,
+  },
+  ACCOUNT_SYNC_INTEGRATION: "AccountSyncIntegration",
+  NETWORK_INTEGRATION: "NetworkIntegration"
+}

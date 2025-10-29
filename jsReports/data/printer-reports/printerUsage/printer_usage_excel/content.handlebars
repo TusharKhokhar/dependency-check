@@ -1,0 +1,83 @@
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metro/4.1.5/css/metro.min.css">
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js'></script>
+    <style>
+        
+    
+        img {
+            with: 40px;
+            height: 40px;
+        }
+        .font-weight--bold {
+            font-weight: bold;
+        }
+        .total {
+            width: 254px; 
+            text-align: right;
+        }
+        .total-row {
+            position: absolute;
+            bottom: 0;
+            width: 94%;
+            display: flex; 
+            justify-content: space-between;
+        }
+    </style>
+
+        <style>
+        {#asset printer_usage.css @encoding=utf8}
+    </style>
+</head>
+<body class="px-8 mt-8">
+      <p class="gray-color">{{data.date}}</p>
+      <div class="row ml-0 mt-2" style="justify-content: space-between">
+        <h4>Printer Usage Summary Report</h4>
+        <img src="{{data.logo}}"/>
+      </div>
+      {{#if data.Customers.length}}
+      {{#each data.Customers}}
+      <p class="mb-6">{{CustomerName}}</p>
+     <table class='table mb-8 ml-6' name={{CustomerName}}>
+            <thead class="border-none">
+                <tr class="bg-row">
+                    <th class="table-heading table-th">Printer</th>
+                    <th class="table-heading table-th">Color pages</th>
+                    <th class="table-heading table-th">GrayScale pages</th>
+                    <th class="table-heading table-th">Duplex pages</th>
+                    <th class="table-heading table-th">Total Printed Pages</th>
+                    <th class="table-heading table-th">Jobs</th>
+                    <th class="table-heading table-th">Costs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each PrinterData}}
+                <tr class="border-top-bottom">
+                    <td class="font-weight--bold">{{Printer}}</td>
+                    <td class="gray-color">{{hasDecimal ColorPages ../../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{hasDecimal GrayScalePages  ../../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{hasDecimal DuplexPages  ../../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{hasDecimal TotalPrintedPages  ../../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{roundNumber Jobs ../../data.decimal ../../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{../../data.currency}}{{truncate Costs ../../data.decimal ../../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+                 <tr class="border-top">
+                    <td class="font-weight--bold total">Total</td>
+                    <td class="gray-color">{{totalColorPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{totalGrayScalePages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{totalDuplexPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{totalPrintedPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{totalJobsPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color">{{../data.currency}}{{totalCostsPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+            </tbody>
+        </table>
+        {{/each}}
+        {{else}}
+        <table></table>
+        {{/if}}
+        <script></script>
+  </body>
+</html>

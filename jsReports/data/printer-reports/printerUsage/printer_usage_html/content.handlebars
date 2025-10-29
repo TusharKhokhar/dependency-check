@@ -1,0 +1,83 @@
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metro/4.1.5/css/metro.min.css">
+    <style>    
+        img {
+            with: 40px;
+            height: 40px;
+        }
+        .font-weight--bold {
+            font-weight: bold;
+        }
+        .total {
+            width: 254px; 
+            text-align: right;
+        }
+        .total-row {
+            position: absolute;
+            bottom: 0;
+            width: 94%;
+            display: flex; 
+            justify-content: space-between;
+        }
+        .custom-wrapper {
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+    </style>
+
+        <style>
+        {#asset printer_usage.css @encoding=utf8}
+    </style>
+</head>
+<body class="px-8 mt-8">
+      <p class="gray-color">{{data.date}}</p>
+      <div class="row ml-0 mt-2" style="justify-content: space-between">
+        <h4>Printer Usage Summary Report</h4>
+        <img src="{{data.logo}}"/>
+      </div>
+      {{#each data.Customers}}
+      <p class="mb-6">{{CustomerName}}</p>
+<div class="custom-wrapper">
+     <table class='col1 sub-report-table mb-8'>
+            <thead class="border-none">
+                <tr class="bg-row">
+                    <th class="table-heading pl-3 width-130px padding-right-8px">Printer</th>
+                    <th class="table-heading table-th right-aligned width-130px padding-right-8px">Color pages</th>
+                    <th class="table-heading table-th right-aligned width-130px padding-right-8px">GrayScale pages</th>
+                    <th class="table-heading table-th right-aligned width-130px padding-right-8px">Duplex pages</th>
+                    <th class="table-heading table-th right-aligned width-130px padding-right-8px">Total Printed Pages</th>
+                    <th class="table-heading table-th right-aligned width-130px padding-right-8px">Jobs</th>
+                    <th class="table-heading table-th right-aligned width-130px padding-right-8px">Costs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each PrinterData}}
+                <tr class="border-top-bottom">
+                    <td class="font-weight--bold width-130px pl-3 padding-right-8px">{{Printer}}</td>
+                    <td class="gray-color right-aligned width-130px padding-right-8px">{{hasDecimal ColorPages ../../data.decimalSeparator}}</td>
+                    <td class="gray-color right-aligned width-130px padding-right-8px">{{hasDecimal GrayScalePages  ../../data.decimalSeparator}}</td>
+                    <td class="gray-color right-aligned width-130px padding-right-8px">{{hasDecimal DuplexPages  ../../data.decimalSeparator}}</td>
+                    <td class="gray-color right-aligned width-130px padding-right-8px">{{hasDecimal TotalPrintedPages  ../../data.decimalSeparator}}</td>
+                    <td class="gray-color right-aligned width-130px padding-right-8px">{{roundNumber Jobs ../../data.decimal ../../data.decimalSeparator}}</td>
+                    <td class="gray-color right-aligned width-130px padding-right-8px">{{../../data.currency}}{{truncate Costs ../../data.decimal ../../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+                 <tr class="border-top">
+                    <td class="font-weight--bold total width-130px padding-right-8px">Total:</td>
+                    <td class="gray-color bold right-aligned width-130px padding-right-8px">{{totalColorPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color bold right-aligned width-130px padding-right-8px">{{totalGrayScalePages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color bold right-aligned width-130px padding-right-8px">{{totalDuplexPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color bold right-aligned width-130px padding-right-8px">{{totalPrintedPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color bold right-aligned width-130px padding-right-8px">{{totalJobsPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                    <td class="gray-color bold right-aligned width-130px padding-right-8px">{{../data.currency}}{{totalCostsPages PrinterData ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+
+        {{/each}}
+        <script></script>
+  </body>
+</html>

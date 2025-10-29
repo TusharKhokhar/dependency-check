@@ -1,0 +1,24 @@
+{
+  "name": "sms-processor",
+  "version": "1.0.0",
+  "description": "Lambda function for processing SMS messages and auditing failures",
+  "main": "index.js",
+  "scripts": {
+    "package": "node packageLambda.js",
+    "package:upload": "node packageLambda.js --bucket=your-s3-bucket",
+    "test": "cucumber-js",
+    "test:cucumber": "cucumber-js --publish"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.10",
+    "@cucumber/cucumber": "^8.0.0",
+    "chai": "^4.3.4",
+    "@aws-sdk/client-sns": "^3.454.0",
+    "@aws-sdk/client-s3": "^3.454.0",
+    "sinon": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

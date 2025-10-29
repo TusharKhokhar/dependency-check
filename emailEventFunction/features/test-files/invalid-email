@@ -1,0 +1,35 @@
+Delivered-To: vijay.ambaliya890@gmail.com
+Received: by 2002:a17:90a:db08:0:0:0:0 with SMTP id o8csp6576879pjs;
+Sat, 27 Jan 2024 00:18:38 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IF4wpQj8XnSwY7l/jNfD6xZ0FvcXcSlsRfXf8lG5iU5gy9V7Thtstnd+DCqE3Jp
+X-Received: by 2002:a17:902:28c:b0:539:697a:6783 with SMTP id s12-20020a170902028c00b00539697a6783mr8322529plc.20.1706349518256;
+Sat, 27 Jan 2024 00:18:38 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1706349518; cv=none;
+d=google.com; s=arc-20160816;
+b=XrSKI9nUp6Xz5ZjDfKXJ9dwhZQzZj/hL5af7l8YX5mNjRAm8eS0mJ6Lh5dhQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com;
+s=arc-20160816;
+h=mime-version:message-id:date:subject:to:from:dkim-signature;
+bh=BHASHEDVALUE;
+b=LONGSIGNATUREVALUE
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmail.com; s=20161025;
+h=from:to:subject:date:message-id:mime-version;
+bh=BHASHEDVALUE;
+b=LONGSIGNATUREVALUE
+X-Gm-Message-State: MESSAGESTATEVALUE
+X-Google-Smtp-Id: X-GOOGLE-ID
+X-Received: by 2002:a17:90a:db08:b0:af5:bb6a:6783 with SMTP id o8-20020a17090a0db080b00af5bb6a6783mr5831632pjb.44.1706349518211;
+Sat, 27 Jan 2024 00:18:38 -0800 (PST)
+Return-Path: vijay.ambaliya890@gmail.com
+Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com. [209.85.214.176])
+by mx.google.com with SMTPS id f21-20020a17090a183100b00af5a71b67f8sor13133909pjb.1.2024.01.27.00.18.38
+for <UNDEFINED_EMAIL>
+Sat, 27 Jan 2024 00:18:38 -0800 (PST)
+From: vijay.ambaliya890@gmail.com
+To: UNDEFINED_EMAIL
+Subject: Test Email
+Date: Sat, 27 Jan 2024 00:18:38 -0800 (PST)
+Message-ID: 
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit

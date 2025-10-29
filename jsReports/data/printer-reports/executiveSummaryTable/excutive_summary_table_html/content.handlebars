@@ -1,0 +1,300 @@
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metro/4.1.5/css/metro.min.css">
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js'></script>
+    <style>
+        .border-bottom {
+            border-bottom: 1px solid hsl(210deg 8% 85%);
+        }
+        .gray-color {
+            color: rgba(0,0,0,0.6) !important;
+        }
+        table thead th {
+            color: rgba(0,0,0,0.6) !important;
+        }
+        table thead tr {
+          border-bottom: 1px solid hsl(210deg 8% 85%);
+          background-color: hsl(210deg 17% 93%);
+
+        }
+        table tr {
+            font-size: 12px;
+        }
+        img {
+            with: 40px;
+            height: 40px;
+        }
+        .section-header {
+            background-color: #f6f8fa;
+        }
+        .table {
+             border: 1px solid  hsl(210deg 8% 85%) !important;
+             width: calc(32.46% - 24px) !important;
+             margin-right: 24px;
+      
+        }
+
+        .mx-N4 {
+            margin-right: -16px;
+            margin-left: -16px;
+        }
+    
+        .data-section {
+          border-bottom: 1px solid  hsl(210deg 8% 85%) !important;
+          justify-content: space-between;
+        }
+
+        .space-between {
+          justify-content: space-between;
+        }
+        .font-weight--bold {
+          font-weight: bold !important;
+          color: #000 !important;
+        }
+  
+        .row {
+          display: flex; 
+          flex-direction: row; 
+          flex-wrap: wrap; 
+
+        }
+        .text-capitalize {
+              text-transform: capitalize;
+        }
+    </style>
+  </head>
+  <body class="px-8 mt-8">
+      <p class="gray-color">{{data.date}}</p>
+      <div class="row ml-0 mt-2 border-bottom pb-2" style="justify-content: space-between">
+        <h4>Executive summary</h4>
+        <img src="{{data.logo}}"/>
+      </div>
+
+    <div class="row m-0">
+      <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th colspan="2" class="font-weight--bold">Genaral Statistics</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.general.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{isPageNumber this.value this.title ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Printer Summary</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.printers.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Color Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.colorComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold text-capitalize">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Job Submission Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.jobSubmissionComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Duplex Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.duplexComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+
+         <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Staple Option</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.stapleComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Paper Size Option</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.paperSizeComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.paperName}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <table class='table mt-8'>
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Orientation Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.orientationComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-8 chart-bg mx-N4" style="width: 50%">
+           <p class="mb-2 ml-4">Daily Page Total - {{data.date}}.</p>
+            <canvas id='days' style="background-color: #fff; padding: 32px; width: 50%; height: 200px;"></canvas>
+       </div>
+       <div class="chart-bg  mx-N4" style="width: 50%">
+           <p class="mb-2 ml-4">Hourly Page Total - {{data.date}}.</p>
+            <canvas id='hourly' style="background-color: #fff; padding: 32px; width: 100%; height: 200px;"></canvas>
+       </div>
+        <script>
+            var data = {{{toJSON data}}}
+            Chart.defaults.global.legend.display = false;
+            new Chart(hourly.getContext("2d"), {
+                type: 'line',
+                data: {
+                    labels: data.chartDataHourly.title,
+                    datasets: [{
+                        fillColor: 'blue',
+                        fill: false,
+                        label: "Pages",
+                        backgroundColor: "red",
+                        borderColor: "red",
+                        backgroundBorderType: 'dash',
+                        borderWidth: 4,
+                        hoverBackgroundColor: "rgba(27,161,226,0.4)",
+                        hoverBorderColor: "rgba(27,161,226,1)",
+                        data: data.chartDataHourly.data,
+                    }],
+                },
+                options: {
+                    animation: {
+                        duration: 0
+                    },
+                    scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        
+                    }
+                }]
+            },
+                }
+            });
+            
+            new Chart(days.getContext("2d"), {
+                type: 'line',
+                data: {
+                    labels: data.chartDataDaily.title,
+                    datasets: [{
+                        fillColor: 'blue',
+                        fill: false,
+                        label: "Pages",
+                        backgroundColor: "yellow",
+                        borderColor: "#cb941a",
+                        backgroundBorderType: 'dash',
+                        borderWidth: 4,
+                        hoverBackgroundColor: "rgba(27,161,226,0.4)",
+                        hoverBorderColor: "rgba(27,161,226,1)",
+                        data: data.chartDataDaily.data,
+                    }],
+                },
+                options: {
+                    animation: {
+                        duration: 0
+                    },
+                     scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        
+                    }
+                }]
+            },
+                }
+            });
+        </script>
+        <div style='page-break-after: always;'>
+        </div>
+    </body>
+</html>

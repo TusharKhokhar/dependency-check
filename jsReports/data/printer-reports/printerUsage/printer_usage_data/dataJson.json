@@ -1,0 +1,71 @@
+{
+    "data": {
+        "date": "July 1st 2022 12:00am to July 22nd 2022 11:59pm",
+        "logo": "https://bigxpose-staging-s3buckettenantuploads-1wvdvfn9ctcvc.s3.amazonaws.com/Logos/629a663abf686e00095dc16c/web.png",
+        "decimal": 2,
+        "currency": "$",
+        "decimalSeparator": ",",
+        "Customers": [
+            {
+                "CustomerName": "Digital",
+                "PrimaryColor":"#0000FF",
+                "PrinterData": [
+                    {
+             "Printer": "BookingServer01/Test",
+             "ColorPages": "1",
+            "GrayScalePages": "2",
+             "DuplexPages": "3",
+            "TotalPrintedPages": "32",
+             "Jobs": "11",
+             "Costs": "2"
+            },
+             {
+             "Printer": "mypctech/Color_scan",
+             "ColorPages": "2",
+            "GrayScalePages": "342",
+            "TotalOrientation":"455",
+            "TotalStapled":"34",
+            "DuplexPages": "366",
+            "TotalPrintedPages": "5",
+             "Jobs": "21",
+             "Costs": "2"
+            }
+                ]
+            },
+            {
+                "CustomerName": "OCLS",
+                "PrimaryColor":"#0000FF",
+                "PrinterData": [
+                    {
+             "Printer": "BookingServer01/Test",
+             "ColorPages": "1",
+            "GrayScalePages": "2",
+             "DuplexPages": "3",
+            "TotalPrintedPages": "32",
+             "Jobs": "0",
+             "Costs": "2"
+            },
+             {
+             "Printer": "mypctech/Color_scan",
+             "ColorPages": "2",
+            "GrayScalePages": "342",
+             "DuplexPages": "366",
+            "TotalPrintedPages": "5",
+             "Jobs": "21",
+             "Costs": "2"
+            },
+             {
+             "Printer": "mypctech/Release_printer_01",
+             "ColorPages": "2",
+            "GrayScalePages": "342",
+             "DuplexPages": "366",
+            "TotalPrintedPages": "5",
+             "Jobs": "21",
+             "Costs": "3"
+            }
+                ]
+            }
+            
+        ]
+    }
+}

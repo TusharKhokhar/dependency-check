@@ -1,0 +1,11 @@
+<% if (data.isLinks && data.urls.length > 0) { %>
+    <p>The import process completed with some failures. Please use the link(s) below to download the failed imports:</p>
+    <% data.urls.forEach((post, index) => { %>
+        <a href="<%= post %>">Download File</a>
+    <% }) %>
+<% } else { %>
+    <p>The data import job has been successfully completed.</p>
+    <p>There were no failed imports.</p>
+<% } %>
+<p>Regards,</p>
+<p>ePRINTit SaaS</p>

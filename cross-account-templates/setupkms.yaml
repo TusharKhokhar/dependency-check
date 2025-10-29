@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a CMK in KMS and grants access to other accounts
+Parameters:
+  DevAccount:
+    Description: AWS AccountNumber for dev
+    Type: Number
+    Default: 377667345683
+  TestAccount:
+    Description: AWS AccountNumber for dev
+    Type: Number
+    Default: 412239032805
+  ProductionAccount:
+    Description: AWS AccountNumber for production
+    Type: Number
+    Default: 807812734727
+
+  #QA Environment
+
+    # when you run it for the first you can comment below lines and related code as it will be filled in the second deploy
+  CloudFormationExecutionRole:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-api-pipelin-CloudFormationExecutionR-YG8HLO4XOVN1'
+  CodeBuildServiceRole:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-api-pipeline-CodeBuildServiceRole-ZK9ORINRF0N1'
+  CodePipelineExecutionRole:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-api-pipelin-CodePipelineExecutionRol-ELJGPSUNSAUL'
+
+    #whn you run the ui pipeline you need to update kms with below roles
+  CodeBuildServiceRoleUI:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-ui-pipeline-CodeBuildServiceRole-1HL7BPD88F5Q9'
+  CodePipelineExecutionRoleUI:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-ui-pipeline-CodePipelineExecutionRol-V4VV3GXR23Q4'
+
+  #when setting up the mobile pipeline
+  CodeBuildServiceRoleMobile:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-mobile-pipeline-CodeBuildServiceRole-VP9WVR743517'
+  CodePipelineExecutionRoleMobile:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-qa-mobile-pipe-CodePipelineExecutionRol-1I6AI6914UVOB'
+
+  #Production Env
+
+    # when you run it for the first you can comment below lines and related code as it will be filled in the second deploy
+  CloudFormationExecutionRoleProd:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-api-pipel-CloudFormationExecutionR-C3I0RP1ADX07'
+  CodeBuildServiceRoleProd:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-api-pipeline-CodeBuildServiceRole-11YEPEB7Q3070'
+  CodePipelineExecutionRoleProd:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-api-pipel-CodePipelineExecutionRol-1F8AGFF42AMRW'
+
+    #whn you run the ui pipeline you need to update kms with below roles
+  ProdCodeBuildServiceRoleUI:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-ui-pipeline-CodeBuildServiceRole-1SOSLI2FP29TE'
+  ProdCodePipelineExecutionRoleUI:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-ui-pipeli-CodePipelineExecutionRol-1NLQU2AHII84E'
+
+  #when setting up the mobile pipeline
+  ProdCodeBuildServiceRoleMobile:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-mobile-pipeli-CodeBuildServiceRole-1NKO8HVCHY7I1'
+  ProdCodePipelineExecutionRoleMobile:
+    Type: String
+    Default: 'arn:aws:iam::377667345683:role/cloud-saas-prod-mobile-pi-CodePipelineExecutionRol-1P50EO7P6GL7A'
+
+
+
+Resources:
+  KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Used by Assumed Roles in Dev/Test/Prod accounts to Encrypt/Decrypt code
+      EnableKeyRotation: true
+      MultiRegion: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: !Ref AWS::StackName
+        Statement:
+          -
+            Sid: Allows admin of the key
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - "kms:Create*"
+              - "kms:Describe*"
+              - "kms:Enable*"
+              - "kms:List*"
+              - "kms:Put*"
+              - "kms:Update*"
+              - "kms:Revoke*"
+              - "kms:Disable*"
+              - "kms:Get*"
+              - "kms:Delete*"
+              - "kms:ScheduleKeyDeletion"
+              - "kms:CancelKeyDeletion"
+              - "kms:ReplicateKey"
+            Resource: "*"
+          -
+            Sid: Allow use of the key for CryptoGraphy Lambda
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${ProductionAccount}:root
+                - !Sub arn:aws:iam::${DevAccount}:root
+                - !Sub arn:aws:iam::${TestAccount}:root
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref CloudFormationExecutionRole
+                - !Ref CodeBuildServiceRole
+                - !Ref CodePipelineExecutionRole
+                - !Ref CodeBuildServiceRoleUI
+                - !Ref CodePipelineExecutionRoleUI
+                - !Ref CodeBuildServiceRoleMobile
+                - !Ref CodePipelineExecutionRoleMobile
+                - !Sub 'arn:aws:iam::${TestAccount}:root'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+          - Sid: Allow use of the key prod
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref CloudFormationExecutionRoleProd
+                - !Ref CodeBuildServiceRoleProd
+                - !Ref CodePipelineExecutionRoleProd
+                - !Ref ProdCodeBuildServiceRoleUI
+                - !Ref ProdCodePipelineExecutionRoleUI
+                - !Ref ProdCodeBuildServiceRoleMobile
+                - !Ref ProdCodePipelineExecutionRoleMobile
+                - !Sub 'arn:aws:iam::${ProductionAccount}:root'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+          - Sid: Allow attachment of persistent resources
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref CloudFormationExecutionRole
+                - !Ref CodeBuildServiceRole
+                - !Ref CodePipelineExecutionRole
+                - !Ref CodeBuildServiceRoleUI
+                - !Ref CodePipelineExecutionRoleUI
+                - !Ref CodeBuildServiceRoleMobile
+                - !Ref CodePipelineExecutionRoleMobile
+                - !Sub 'arn:aws:iam::${TestAccount}:root'
+            Action:
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+            Resource: "*"
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: 'true'
+          - Sid: Allow attachment of persistent resources prod
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref CloudFormationExecutionRoleProd
+                - !Ref CodeBuildServiceRoleProd
+                - !Ref CodePipelineExecutionRoleProd
+                - !Ref ProdCodeBuildServiceRoleUI
+                - !Ref ProdCodePipelineExecutionRoleUI
+                - !Ref ProdCodeBuildServiceRoleMobile
+                - !Ref ProdCodePipelineExecutionRoleMobile
+                - !Sub 'arn:aws:iam::${ProductionAccount}:root'
+            Action:
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+            Resource: "*"
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: 'true'
+
+  KMSAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/codepipeline-crossaccounts
+      TargetKeyId: !Ref KMSKey
+
+Outputs:
+  CMK:
+    Value: !GetAtt [KMSKey,Arn]

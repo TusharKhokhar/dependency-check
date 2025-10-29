@@ -1,0 +1,299 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Resources for sending SMS messages from a centralized Production account
+
+Parameters:
+  DevAccountId:
+    Description: AWS Account ID for the Development environment
+    Type: String
+    Default: 377667345683
+  StagingAccountId:
+    Description: AWS Account ID for the Staging environment
+    Type: String
+    Default: 412239032805
+  SMSQueueName:
+    Description: Name of the SQS queue that will receive SMS messages
+    Type: String
+    Default: cloud-saas-sms-queue
+  MessageRetentionPeriod:
+    Description: Number of seconds to retain messages in the queue
+    Type: Number
+    Default: 1209600  # 14 days
+  VisibilityTimeout:
+    Description: Visibility timeout for messages in seconds
+    Type: Number
+    Default: 300  # 5 minutes
+  DeadLetterQueueRetention:
+    Description: Number of seconds to retain messages in the DLQ
+    Type: Number
+    Default: 1209600  # 14 days
+  MaxReceiveCount:
+    Description: Maximum number of receives before message is sent to DLQ
+    Type: Number
+    Default: 3
+  ThrottlingRate:
+    Description: Maximum messages to process per second
+    Type: Number
+    Default: 1
+  CROSSVALUE:
+    Description: api value for sms audit log
+    Type: String
+    Default: 'cweex23xieo2hznx2ln3hr8ru23crucl'
+  LayerBucketName:
+    Description: api value for sms audit log
+    Type: String
+    Default: 'lambda-layer-saas-primary-prod'
+  LogGroupName:
+    Type: String
+    Description: Name of the CloudWatch Logs group where SNS SMS delivery logs are stored
+    Default: sns/us-east-1/807812734727/DirectPublishToPhoneNumber/Failure
+
+Resources:
+
+  SmsFailureLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: cloud-saas-process-sms-failures
+      Runtime: nodejs20.x
+      Role: !GetAtt SMSProcessorRole.Arn
+      Handler: index.handler
+      Timeout: 30
+      CodeUri: s3://lambda-layer-saas-primary-prod/lambda/sms-failure-detection.zip
+      Description: A Lambda function that processes SMS failure notifications
+      Environment:
+        Variables:
+          awsAccountNumber: !Ref AWS::AccountId
+          CROSS_VALUE: !Ref CROSSVALUE
+          mongoDBConnection: 'eprintit-prod.ai3yk'
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          dbName: 'saas-prod'
+          region: !Ref "AWS::Region"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+        - !Ref SmsCommonLayer
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SmsFailureLambda
+      Action: lambda:InvokeFunction
+      Principal: logs.amazonaws.com
+      SourceArn: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${LogGroupName}:*
+
+  SmsFailureLogSubscription:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      FilterName: sms-failure-filter
+      FilterPattern: '{ $.status = "FAILED" }'
+      DestinationArn: !GetAtt SmsFailureLambda.Arn
+
+
+  SmsCommonLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: sms-common-layer
+      Description: Layer containing mongodb and aws4 dependencies
+      Content:
+        S3Bucket: !Ref LayerBucketName
+        S3Key: layers/sms-common-layer.zip
+      CompatibleRuntimes:
+        - nodejs18.x
+        - nodejs20.x
+
+  # Dead Letter Queue for failed SMS messages
+  SMSDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${SMSQueueName}-dlq"
+      MessageRetentionPeriod: !Ref DeadLetterQueueRetention
+      Tags:
+        - Key: Purpose
+          Value: "SMS Failed Messages"
+
+  # Main SQS queue for SMS messages
+  SMSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref SMSQueueName
+      MessageRetentionPeriod: !Ref MessageRetentionPeriod
+      VisibilityTimeout: !Ref VisibilityTimeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SMSDeadLetterQueue.Arn
+        maxReceiveCount: !Ref MaxReceiveCount
+      Tags:
+        - Key: Purpose
+          Value: "Cross-Account SMS Processing"
+
+  # Queue policy allowing cross-account access
+  SMSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref SMSQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "AllowCrossAccountSendMessage"
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${DevAccountId}:root"
+                - !Sub "arn:aws:iam::${StagingAccountId}:root"
+            Action: "sqs:SendMessage"
+            Resource: !GetAtt SMSQueue.Arn
+
+  # SNS Topic for SMS alerts
+  SMSAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "SMS-Processing-Alerts"
+      TopicName: "SMS-Processing-Alerts"
+      KmsMasterKeyId: "alias/aws/sns"
+
+  # IAM Role for Lambda SMS processor
+  SMSProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+          - Sid: Mongodb
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SMSProcessorPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
+                Resource:
+                  - !GetAtt SMSQueue.Arn
+                  - !GetAtt SMSDeadLetterQueue.Arn
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                  - sns:SetSMSAttributes
+                  - sns:GetSMSAttributes
+                  - sns:CheckIfPhoneNumberIsOptedOut
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref SMSAlertTopic
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess"
+
+  # Lambda function that processes messages from SQS queue and sends SMS via SNS
+  SMSProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: "cloud-saas-prod-sms-processor"
+      Runtime: nodejs20.x
+      Handler: sms-processor.handler
+      Role: !GetAtt SMSProcessorRole.Arn
+      Timeout: 60
+      MemorySize: 128
+      CodeUri: s3://lambda-layer-saas-primary-prod/lambda/sms-processor.zip
+      Environment:
+        Variables:
+          ALERT_TOPIC_ARN: !Ref SMSAlertTopic
+          CROSS_VALUE: !Ref CROSSVALUE
+          mongoDBConnection: 'eprintit-prod.ai3yk'
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          dbName: 'saas-prod'
+          region: !Ref "AWS::Region"
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+        - !Ref SmsCommonLayer
+
+  # Lambda event source mapping to connect SQS to Lambda
+  SMSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1  # Process one message at a time
+      Enabled: true
+      EventSourceArn: !GetAtt SMSQueue.Arn
+      FunctionName: !GetAtt SMSProcessorFunction.Arn
+      MaximumBatchingWindowInSeconds: 0  # Don't wait to accumulate messages
+#
+#  # CloudWatch Alarms for monitoring
+#  SMSQueueDepthAlarm:
+#    Type: AWS::CloudWatch::Alarm
+#    Properties:
+#      AlarmName: "SMSQueue-Depth-Alarm"
+#      AlarmDescription: "Alarm when SMS queue depth exceeds threshold"
+#      Namespace: "AWS/SQS"
+#      MetricName: "ApproximateNumberOfMessagesVisible"
+#      Dimensions:
+#        - Name: QueueName
+#          Value: !GetAtt SMSQueue.QueueName
+#      Statistic: "Sum"
+#      Period: 300
+#      EvaluationPeriods: 1
+#      Threshold: 100
+#      ComparisonOperator: "GreaterThanThreshold"
+#      AlarmActions:
+#        - !Ref SMSAlertTopic
+#
+#  SMSDeadLetterQueueAlarm:
+#    Type: AWS::CloudWatch::Alarm
+#    Properties:
+#      AlarmName: "SMS-DLQ-Messages-Alarm"
+#      AlarmDescription: "Alarm when messages appear in the SMS DLQ"
+#      Namespace: "AWS/SQS"
+#      MetricName: "ApproximateNumberOfMessagesVisible"
+#      Dimensions:
+#        - Name: QueueName
+#          Value: !GetAtt SMSDeadLetterQueue.QueueName
+#      Statistic: "Sum"
+#      Period: 300
+#      EvaluationPeriods: 1
+#      Threshold: 1
+#      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+#      AlarmActions:
+#        - !Ref SMSAlertTopic
+#
+#  SMSProcessorErrorAlarm:
+#    Type: AWS::CloudWatch::Alarm
+#    Properties:
+#      AlarmName: "SMSProcessor-Errors-Alarm"
+#      AlarmDescription: "Alarm when SMS processor Lambda has errors"
+#      Namespace: "AWS/Lambda"
+#      MetricName: "Errors"
+#      Dimensions:
+#        - Name: FunctionName
+#          Value: !Ref SMSProcessorFunction
+#      Statistic: "Sum"
+#      Period: 60
+#      EvaluationPeriods: 1
+#      Threshold: 1
+#      ComparisonOperator: "GreaterThanOrEqualToThreshold"
+#      AlarmActions:
+#        - !Ref SMSAlertTopic
+
+Outputs:
+  SMSQueueURL:
+    Description: URL of the SMS Queue
+    Value: !Ref SMSQueue
+  SMSQueueARN:
+    Description: ARN of the SMS Queue
+    Value: !GetAtt SMSQueue.Arn
+  SMSDeadLetterQueueURL:
+    Description: URL of the SMS Dead Letter Queue
+    Value: !Ref SMSDeadLetterQueue

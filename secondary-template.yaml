@@ -1,0 +1,1348 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  cloud saas backend template
+Transform:
+  - AWS::Serverless-2016-10-31
+Globals:
+  Api:
+    EndpointConfiguration: REGIONAL
+    Cors:
+      AllowOrigin: "'*'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,tier,Tier,apiKey,apikey,subdomain'"
+      AllowMethods: "'GET,PUT,POST,PATCH,DELETE,OPTIONS'"
+Parameters:
+  DomainName:
+    Type: String
+  MongoDBConnection:
+    Type: String
+  DatabaseName:
+    Type: String
+  Stage:
+    Type: String
+  BucketStage:
+    Type: String
+  Environment:
+    Type: String
+  APIDomain:
+    Type: String
+  ApiKey:
+    Type: String
+  Sha1Algorithm:
+    Type: String
+
+  #frontend params
+
+  BucketName:
+    Type: String
+  MultiregionEndpoint:
+    Type: String
+  WebSocketDomainName:
+    Type: String
+  WildCardDomain:
+    Type: String
+  RootDomainName:
+    Type: String
+  HostedZoneID:
+    Type: String
+  BackupRegion:
+    Type: String
+  ReplicationBucketName:
+    Description: replication bucket name
+    Type: String
+  ReplicationRegion:
+    Description: replication bucket region
+    Type: String
+  FixedCloudfrontZoneId:
+    Description: replication bucket region
+    Type: String
+  RegionType:
+    Type: String
+    Default: sec
+  BaseDomainName:
+    Type: String
+  JwtTokenExpiry:
+    Type: Number
+  RefreshTokenExpiry:
+    Type: Number
+  IotTokenExpiry:
+    Type: String
+  RegionTypeMain:
+    Type: String
+  ProdAccountNumber:
+    Type: String
+    Default: '807812734727'
+  SMSQueueName:
+    Type: String
+    Default: 'cloud-saas-sms-queue'
+
+Resources:
+
+  WebSocketAPIs:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: nested_templates/websockets-sec.yaml
+      Parameters:
+        BucketStage: !Ref BucketStage
+        MongoDBConnection: !Ref MongoDBConnection
+        DatabaseName: !Ref DatabaseName
+        StageDeployment: !Ref Stage
+        DomainName: !Ref DomainName
+        Stage: !Ref Stage
+        RegionType: !Ref RegionType
+        BaseDomainName: !Ref BaseDomainName
+
+  FileUploadApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: nested_templates/uploadImage-sec.yaml
+      Parameters:
+        Domain: !Ref APIDomain
+        Stage: !Ref Stage
+        ApiKey: !Ref ApiKey
+        DomainName: !Ref DomainName
+        RegionType: !Ref RegionType
+        BaseDomainName: !Ref BaseDomainName
+        RegionTypeMain: !Ref RegionTypeMain
+        MongoDBConnection: !Ref MongoDBConnection
+        DatabaseName: !Ref DatabaseName
+
+  MyApi:
+    Type: "AWS::Serverless::Api"
+    Properties:
+      StageName: 'Prod'
+      TracingEnabled: true
+      BinaryMediaTypes: ["*/*"]
+
+  AssumeRoleSTS:
+    Type: AWS::IAM::Role
+    DependsOn: apiLambdaFunctionRole
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt apiLambdaFunctionRole.Arn
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: tenantBucketInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:PutObject'
+                  - "s3:ListBucket"
+                  - 's3:Delete*'
+                Resource:
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/*'
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}'
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}-converted/*'
+        - PolicyName: sendEmailPolicy
+          PolicyDocument:
+            Version: '2008-10-17'
+            Statement: [{"Effect":"Allow","Action":"ses:SendRawEmail","Resource":"*"},
+                        {"Effect":"Allow","Action":"ses:SendEmail","Resource":"*"}]
+        - PolicyName: iotPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iot:*
+                Resource: "*"
+        - PolicyName: websocketPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - execute-api:Invoke
+                  - execute-api:ManageConnections
+                Resource: arn:aws:execute-api:*:*:*
+        - PolicyName: cloudWatchPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:FilterLogEvents
+                Resource: "*"
+
+  DependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: dependencies-layer
+      Description: graphql and other utility dependencies.
+      ContentUri: graphql/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  AWSSdkLayerV2:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: aws-sdk-v2
+      Description: aws-sdk layer
+      ContentUri: awsLambdaLayerV2/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  graphqlFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: AssumeRoleSTS
+    Properties:
+      Handler: graphql.handler
+      CodeUri: graphql/
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 30
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      Description: A Lambda function that return data returned from grahpql and lambda logics
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          awsAccountNumber: !Ref AWS::AccountId
+          roleName: !Ref AssumeRoleSTS
+          environment: !Ref Environment
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          mongoDBConnection: !Ref MongoDBConnection
+          dbName: !Join [ "",[!Ref DatabaseName, "-",!Ref Stage] ]
+          domainName: !Ref DomainName
+          Stage: !Ref Stage
+          senderEmail: !Sub 'DoNotReply@${DomainName}'
+          Sha1Algorithm: !Ref Sha1Algorithm
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+      Layers:
+        - !Ref DependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Events:
+        GraphQLGET:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /graphql
+            Method: get
+        GraphQLOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /graphql
+            Method: options
+        GraphQLPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /graphql
+            Method: post
+
+  apiLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    DependsOn:
+      - WebSocketAPIs
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ConfusedDeputyMitigation
+            Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"            
+      Path: /
+      Policies:
+        - PolicyName: allowLogoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/Logos/*'
+              - Effect: Allow
+                Action:
+                  - 's3:ListBucket'
+                Resource:
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}'
+        - PolicyName: SQSCrossAccountAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !Sub "arn:aws:sqs:*:${ProdAccountNumber}:${SMSQueueName}"
+        - PolicyName: websocketPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'execute-api:ManageConnections'
+                  - 'execute-api:Invoke'
+                Resource:
+                  - !Sub 'arn:aws:execute-api:*:${AWS::AccountId}:*'
+
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetResourcePolicy
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:ListSecretVersionIds
+                  - secretsmanager:ListSecrets
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeInstances
+                  - ec2:AttachNetworkInterface
+                Resource:
+                  - "*"
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - lambda:InvokeFunction
+              Effect: Allow
+              Resource:
+                - "*"
+        - PolicyName: LambdaFunctionUpdatePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - lambda:UpdateFunctionConfiguration
+                - lambda:UpdateFunctionCode
+              Effect: Allow
+              Resource:
+                - "*"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+
+  CacheInvalidate:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: cacheInvalidate/invalidation.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 128
+      Timeout: 30
+      CodeUri: cacheInvalidate/
+      Description: A Lambda function for cache invalidate
+      Role: !GetAtt CacheInvalidateIamRole.Arn
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  CacheInvalidateIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-cacheInvalidateIamRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount:
+                  - 377667345683
+                  - 412239032805
+                  - 807812734727
+              ArnLike:
+                aws:SourceArn:
+                  - arn:aws:lambda:*:377667345683:function:*
+                  - arn:aws:lambda:*:412239032805:function:*
+                  - arn:aws:lambda:*:807812734727:function:*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        # Policy 1: cloudfrontCreateValidation
+        - PolicyName: cloudfrontCreateValidationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: 'cloudfrontCreateValidation'
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                Resource: '*'
+
+        # Policy 2: clearCache
+        - PolicyName: clearCachePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: 'clearCache'
+                Effect: Allow
+                Action:
+                  - codepipeline:PutJobFailureResult
+                  - codepipeline:PutJobSuccessResult
+                  - codepipeline:CreateInvalidation
+                Resource: '*'
+
+
+  S3InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CacheInvalidate
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${DomainName}
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"              
+      Path: '/'
+      Policies:
+        - PolicyName: s3
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                Resource:
+                  - !Sub arn:aws:s3:::${DomainName}
+                  - !Sub arn:aws:s3:::${DomainName}/*
+
+  TranslationDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: dependencies-layer-translation
+      Description: translation and other utility dependencies.
+      ContentUri: translationLayer/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  publicAuthFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: TranslationHandler
+    Properties:
+      Handler: auth.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 29
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: publicAuth/
+      Description: A Lambda function for the authentication
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          awsAccountNumber: !Ref AWS::AccountId
+          translateLambdaFunction: !Ref TranslationHandler
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage] ]
+          roleName: !Ref AssumeRoleSTS
+          environment: !Ref Environment
+          websocketApiId: !Ref WebSocketDomainName
+          clientDomain: !Sub '${DomainName}'
+          stage: !Ref Stage
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          senderEmail: !Sub 'DoNotReply@${DomainName}'
+          domainName: !Ref DomainName
+          jwtTokenExpiry: !Ref JwtTokenExpiry
+          refreshTokenExpiry: !Ref RefreshTokenExpiry
+          iotTokenExpiry: !Ref IotTokenExpiry
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+
+      Layers:
+        - !Ref PublicAuthDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+        - !Ref AWSSdkLayerV2
+      Events:
+        partnerApis:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /partner/{proxy+}
+            Method: any
+        partnerApisOption:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /partner/{proxy+}
+            Method: options
+        publicApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /public/{proxy+}
+            Method: any
+        publicApiOption:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /public/{proxy+}
+            Method: options
+
+  PublicAuthDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: dependencies-layer-authPublic
+      Description: authPublic auth and other utility dependencies.
+      ContentUri: publicAuth/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+    
+
+  TranslationHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 512
+      Timeout: 300
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: translation/
+      Description: A Lambda function for the translation handling
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          roleName: !Ref AssumeRoleSTS
+          environment: !Ref Environment
+          stage: !Ref Stage
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          senderEmail: !Sub 'DoNotReply@${DomainName}'
+          clientDomain: !Sub '${DomainName}'
+          domainName: !Ref DomainName
+      Layers:
+        - !Ref TranslationDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  LambdaDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: dependencies-layer-lambda
+      Description: lambda functions dependencies.
+      ContentUri: lambdaDependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  AssumeRoleHealthCheck:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: tenantBucketInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:*'
+                Resource:
+                  - '*'
+        - PolicyName: iotPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iot:*
+                Resource: "*"
+        - PolicyName: secretManagerRead
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:*
+                Resource: "*"
+        - PolicyName: lambda-read-envs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                Resource: "*"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+  healthCheck:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "cloud-saas-api-healthcheck-${AWS::Region}"
+      Handler: healthcheck/app.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 20
+      CodeUri: healthcheck/
+      Description: A Lambda function for healthcheck
+      Role: !GetAtt AssumeRoleHealthCheck.Arn
+      Environment:
+        Variables:
+          mongoDBConnection: !Ref MongoDBConnection
+          functionName: !Sub "cloud-saas-api-healthcheck-${AWS::Region}"
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage] ]
+          environment: !Ref Environment
+          Stage: !Ref Stage
+          status: 'ok'
+          domainName: !Ref DomainName
+          region: !Ref "AWS::Region"
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Events:
+        GetData:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /healthcheck
+            Method: get
+
+  ACMCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Ref WildCardDomain
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneID
+
+  CustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref MultiregionEndpoint
+      RegionalCertificateArn: !Ref ACMCertificate
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  CustomDomainWebSocket:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref WebSocketDomainName
+      RegionalCertificateArn: !Ref ACMCertificate
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  CustomDomainWebSocketPartner:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Sub "partner-${WebSocketDomainName}"
+      RegionalCertificateArn: !Ref ACMCertificate
+      SecurityPolicy: TLS_1_2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  HealthcheckRegion:
+    Type: "AWS::Route53::HealthCheck"
+    Properties:
+      HealthCheckConfig:
+        Port: "443"
+        Type: "HTTPS_STR_MATCH"
+        SearchString: "ok"
+        ResourcePath: "/Prod/healthcheck"
+        FullyQualifiedDomainName:
+          Fn::Sub: ${MyApi}.execute-api.${AWS::Region}.amazonaws.com
+        RequestInterval: "30"
+        FailureThreshold: "2"
+        Regions:
+          - "us-east-1"
+          - "us-west-2"
+          - "us-west-1"
+
+  RegionEndpointPrimaryFailoverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: SECONDARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "endpoint-region-${Stage}-${RegionType}"
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref MultiregionEndpoint
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt CustomDomain.RegionalDomainName
+
+  RegionWebsocketFailoverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: SECONDARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "endpoint-region-${Stage}-${RegionType}"
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref WebSocketDomainName
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt CustomDomainWebSocket.RegionalDomainName
+
+  RegionWebsocketPartnerFailoverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: SECONDARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "endpoint-region-${Stage}-${RegionType}-part"
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Sub "partner-${WebSocketDomainName}"
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+        - !GetAtt CustomDomainWebSocketPartner.RegionalDomainName
+
+  EmailSecondaryFailoverRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Failover: SECONDARY
+      HealthCheckId: !Ref HealthcheckRegion
+      SetIdentifier: !Sub "endpoint-${Stage}-endpoint-region-ses"
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref DomainName
+      Type: MX
+      TTL: '60'
+      ResourceRecords:
+        - !Sub '10 inbound-smtp.${AWS::Region}.amazonaws.com'
+
+  DeleteJobsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"              
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: s3Deletion
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:Put*
+                  - s3:Get*
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/PublicUploads/*'
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/PublicUploads'
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}-converted/PublicUploads/*'
+                  - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}-converted/PublicUploads'
+        - PolicyName: logs
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: arn:aws:logs:*:*:*
+
+  DeleteJobs:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 60
+      CodeUri: deleteJobs/
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Description: A Lambda function to delete the jobs
+      Role: !GetAtt DeleteJobsLambdaRole.Arn
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage] ]
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+
+  QuotaBalance:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 360
+      CodeUri: quotaBalance/
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Description: A Lambda function to delete the jobs
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage] ]
+
+  ScheduledRuleQuotaBalance:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "cron(0 8 ? * * *)"
+      State: "DISABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "QuotaBalance"
+              - "Arn"
+          Id: "TargetFunctionV2"
+
+  PermissionForEventsToInvokeQuotaBalance:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "QuotaBalance"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledRuleQuotaBalance"
+          - "Arn"
+
+  ScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(1 hour)"
+      State: "DISABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "DeleteJobs"
+              - "Arn"
+          Id: "TargetFunctionV1"
+
+  PermissionForEventsToInvokeDeleteJobs:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "DeleteJobs"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledRule"
+          - "Arn"
+        
+  OfflineThingAlert:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 512
+      Timeout: 600
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: sendOfflineThingAlert/
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Description: A lambda function to log offline things into AuditLog
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          roleName: !Ref AssumeRoleSTS
+          environment: !Ref Environment
+
+  ScheduledRuleOfflineThingAlert:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "cron(0 0/24 ? * * *)"
+      State: "DISABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "OfflineThingAlert"
+              - "Arn"
+          Id: "TargetFunctionV2"          
+
+  PermissionForEventsToInvokeOfflineThingAlert:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "OfflineThingAlert"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledRuleOfflineThingAlert"
+          - "Arn"
+
+  RetryFailedTransaction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: handleFailedThirdPartyTransactions/
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Description: A lambda function to retry failed third part transaction
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          roleName: !Ref AssumeRoleSTS
+          environment: !Ref Environment
+
+  ScheduledRuleRetryFailedTransaction:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "cron(0 0/24 ? * * *)"
+      State: "DISABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "RetryFailedTransaction"
+              - "Arn"
+          Id: "TargetFunctionV2"
+
+  PermissionForEventsToInvokeRetryFailedTransaction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "RetryFailedTransaction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledRuleRetryFailedTransaction"
+          - "Arn"
+
+  DashboardDataAggregator:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 600
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: dashboardDataAggregator/
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Description: A lambda function to store last 28days aggregated usage data for all customers
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          environment: !Ref Environment
+
+  ScheduledRuleDashboardDataAggregator:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "cron(0 0/24 ? * * *)"
+      State: "DISABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "DashboardDataAggregator"
+              - "Arn"
+          Id: "TargetFunctionV2"
+
+  DashboardDataAggregatorPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "DashboardDataAggregator"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledRuleDashboardDataAggregator"
+          - "Arn"
+
+  ResendPrintJobs:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 20
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: resendJobs/
+      Description: A Lambda function for the resend print jobs
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          roleName: !Ref AssumeRoleSTS
+          environment: !Ref Environment
+          websocketApiId: !Ref WebSocketDomainName
+          stage: 'Prod'
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          senderEmail: !Sub 'DoNotReply@${DomainName}'
+          clientDomain: !Sub '${DomainName}'
+          domainName: !Ref DomainName
+          jwtTokenExpiry: !Ref JwtTokenExpiry
+          refreshTokenExpiry: !Ref RefreshTokenExpiry
+          iotTokenExpiry: !Ref IotTokenExpiry
+      Layers:
+        - !Ref LambdaDependenciesLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  ScheduledRuleResendJobs:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(10 minutes)"
+      State: "DISABLED"
+      Targets:
+        - Arn:
+            Fn::GetAtt:
+              - "ResendPrintJobs"
+              - "Arn"
+          Id: "TargetFunctionV2"
+
+  PermissionForEventsToInvokeResendJobs:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "ResendPrintJobs"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledRuleResendJobs"
+          - "Arn"
+    # Step 1: Create a new VPC
+  VPCStaticIP:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.16.0.0/16
+
+    # Step 2: Create 2 Subnets
+  SubnetPublic:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}b"
+      CidrBlock: 172.16.1.0/24
+      VpcId:
+        Ref: VPCStaticIP
+
+  SubnetPrivate:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}b"
+      CidrBlock: 172.16.2.0/24
+      VpcId:
+        Ref: VPCStaticIP
+
+    # Step 3: Create an Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: lambda-igw
+
+    # Attach Internet Gateway to VPC
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: InternetGateway
+      VpcId:
+        Ref: VPCStaticIP
+
+    # Step 4: Create a public Route Table and Assign it to our public route
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPCStaticIP
+
+  RoutePublic:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+      RouteTableId:
+        Ref: RouteTablePublic
+
+  SubnetRouteTableAssociationPublic:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: RouteTablePublic
+      SubnetId:
+        Ref: SubnetPublic
+
+    # Step 5: Create a NAT Gateway
+    # Before creating NAT Gateway, we need to create Elastic IP with vpc scope
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt: [EIP, AllocationId]
+      SubnetId:
+        Ref: SubnetPublic
+
+    # In tutorial NAT Gateway is attached as default route 0.0.0.0/0 in main Route Table.
+    # Main Route Table is created implicitely during VPC creation and CloudFormation
+    # has no access to its ID. To overcome this limitation we create additional Route Table.
+  RouteTablePrivate:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPCStaticIP
+
+  RoutePrivate:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGateway
+      RouteTableId:
+        Ref: RouteTablePrivate
+
+  SubnetRouteTableMainAssociationPrivate:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: RouteTablePrivate
+      SubnetId:
+        Ref: SubnetPrivate
+
+  AuthLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: auth-dependencies
+      Description: auth utility dependencies.
+      ContentUri: orgAuth/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  OrgAuthLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Lambda-specific SG with default-like rules"
+      VpcId: !Ref VPCStaticIP
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+  OrgAuthLambdaSGIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref OrgAuthLambdaSecurityGroup
+      IpProtocol: "-1"
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId: !Ref OrgAuthLambdaSecurityGroup
+
+  OrgAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 29
+      CodeUri: orgAuth/
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      Description: A Lambda function for the authentication
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::GetAtt: [VPCStaticIP, DefaultSecurityGroup]
+          - !Ref OrgAuthLambdaSecurityGroup
+        SubnetIds:
+          - Ref: SubnetPrivate
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          awsAccountNumber: !Ref AWS::AccountId
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage] ]
+          environment: !Ref Environment
+          Stage: !Ref Stage
+          domainName: !Ref DomainName
+          jwtTokenExpiry: !Ref JwtTokenExpiry
+          refreshTokenExpiry: !Ref RefreshTokenExpiry
+          iotTokenExpiry: !Ref IotTokenExpiry
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+      Layers:
+        - !Ref AuthLambdaLayer
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Events:
+        orgApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /auth/{proxy+}
+            Method: any
+        orgApiOption:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /auth/{proxy+}
+            Method: options
+
+  logoHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.11
+      Tracing: Active
+      MemorySize: 128
+      Timeout: 10
+      Role: !GetAtt apiLambdaFunctionRole.Arn
+      CodeUri: logoHandler/
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Events:
+        loadImage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /logo/{source}
+            Method: get
+
+  BasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn:
+      - MyApi
+      - ACMCertificate
+      - CustomDomain
+    Properties:
+      DomainName: !Ref APIDomain
+      RestApiId: !Ref MyApi
+      Stage: !Ref MyApi.Stage
+
+  BasePathMappingWebsockets:
+    DependsOn:
+      - CustomDomainWebSocket
+      - WebSocketAPIs
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !Sub 'wss.${DomainName}'
+      ApiId: !GetAtt WebSocketAPIs.Outputs.WebSocketRefId
+      Stage: Prod
+
+  BasePathMappingSocketPartners:
+    DependsOn:
+      - CustomDomainWebSocketPartner
+      - WebSocketAPIs
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !Sub 'partner-wss.${DomainName}'
+      ApiId: !GetAtt WebSocketAPIs.Outputs.WebSocketRefId
+      Stage: Prod

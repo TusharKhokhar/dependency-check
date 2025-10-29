@@ -1,0 +1,17 @@
+{
+    "name": "excutive_summary_table_html",
+    "engine": "handlebars",
+    "recipe": "html",
+    "data": {
+        "shortid": "Y__UmlbO8"
+    },
+    "shortid": "IyjmPZUgE",
+    "creationDate": {
+        "$$date": 1655952471094
+    },
+    "modificationDate": {
+        "$$date": 1725264480635
+    },
+    "_id": "vOcdHApK91DCpZCb",
+    "$entitySet": "templates"
+}

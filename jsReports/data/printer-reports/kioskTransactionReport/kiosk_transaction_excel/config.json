@@ -1,0 +1,20 @@
+{
+    "name": "kiosk_transaction_excel",
+    "engine": "handlebars",
+    "recipe": "html-to-xlsx",
+    "data": {
+        "shortid": "Gf-M7kOCB"
+    },
+    "htmlToXlsx": {
+        "htmlEngine": "chrome"
+    },
+    "shortid": "Bja8s5vmU",
+    "creationDate": {
+        "$$date": 1699595624140
+    },
+    "modificationDate": {
+        "$$date": 1749727886336
+    },
+    "_id": "HzGeV82wjsCnm3eS",
+    "$entitySet": "templates"
+}

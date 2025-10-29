@@ -1,0 +1,483 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  CodeRepository:
+    Type: String
+    Default: cloud-saas-embedded-pwa
+  ProjectName:
+    Type: String
+    Default: cloud-saas-pwa-prod
+  PipelineName:
+    Type: String
+    Default: cloud-saas-prod-pwa
+  ArtifactSecondaryRegionBucket:
+    Type: String
+    Default: cloud-saas-api-us-artifact
+  PrimaryRegion:
+    Type: String
+    Default: us-east-1
+  SecondaryRegion:
+    Type: String
+    Default: us-west-2
+  Environment:
+    Type: String
+    Default: prod
+  BranchName:
+    Type: String
+    Default: main
+  InvalidateCacheFunctionName:
+    Type: String
+    Default: 'cloud-saas-api-dev-us-east-1-CacheInvalidate-PbGKD6V6WAzO'
+  CloudDistributionId:
+    Type: String
+    Default: "E3JKA36S1MEKHB"
+  DeployBucket:
+    Type: String
+    Default: "eprintitsaas.com-pwa"
+  BuildArtifactsBucket:
+    Type: String
+    Default: "cloud-saas-dev-api-pipeline-buildartifactsbucket-16h77aydunghq"
+  StackName:
+    Type: String
+    Default: cloud-saas-pwa-prod
+  PrimaryBucket:
+    Type: String
+    Default: "eprintitsaas.com-pwa"
+  ProdAccountNo:
+    Type: Number
+    Default: 807812734727
+  PipelineRoleName:
+    Type: String
+    Default: pipelineRoleCrossAccount
+  CloudformationRoleName:
+    Type: String
+    Default: cloudformationRoleAuth
+  KMSKeyPrimary:
+    Type: String
+    Default: 'arn:aws:kms:us-east-1:377667345683:key/mrk-35910bd225f941adb041fda200531464'
+  KMSKeySecondary:
+    Type: String
+    Default: 'arn:aws:kms:us-west-2:377667345683:key/mrk-35910bd225f941adb041fda200531464'
+  CacheFunctionName:
+    Type: String
+    Default: "cloud-saas-api-us-east-1-CacheInvalidate-cOE6HFZ0F32u"
+Resources:
+
+  ########  ##     ## #### ##       ########
+  ##     ## ##     ##  ##  ##       ##     ##
+  ##     ## ##     ##  ##  ##       ##     ##
+  ########  ##     ##  ##  ##       ##     ##
+  ##     ## ##     ##  ##  ##       ##     ##
+  ##     ## ##     ##  ##  ##       ##     ##
+  ########   #######  #### ######## ########
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref ProjectName
+      Description: Build project project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:5.0 # More info on Images: https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-available.html
+        EnvironmentVariables:
+          - Name: BUILD_OUTPUT_BUCKET
+            Value: !Ref BuildArtifactsBucket
+          - Name: US_WEST_2_ARTIFACT_BUCKET
+            Value: !Ref ArtifactSecondaryRegionBucket
+          - Name: PRIMARY_BUCKET_NAME
+            Value: !Ref PrimaryBucket
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-prod.yaml
+      Tags:
+        -
+          Key: "Stack"
+          Value: !Ref AWS::StackName
+        -
+          Key: "Project"
+          Value: !Ref ProjectName
+
+  ########  #### ########  ######## ##       #### ##    ## ########
+  ##     ##  ##  ##     ## ##       ##        ##  ###   ## ##
+  ##     ##  ##  ##     ## ##       ##        ##  ####  ## ##
+  ########   ##  ########  ######   ##        ##  ## ## ## ######
+  ##         ##  ##        ##       ##        ##  ##  #### ##
+  ##         ##  ##        ##       ##        ##  ##   ### ##
+  ##        #### ##        ######## ######## #### ##    ## ########
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStores:
+        - Region: !Ref PrimaryRegion
+          ArtifactStore:
+            Type: S3
+            Location: !Ref BuildArtifactsBucket
+            EncryptionKey:
+              Id: !Ref KMSKeyPrimary
+              Type: KMS
+        - Region: !Ref SecondaryRegion
+          ArtifactStore:
+            Type: S3
+            Location: !Ref ArtifactSecondaryRegionBucket
+            EncryptionKey:
+              Id: !Ref KMSKeyPrimary
+              Type: KMS
+
+      Name: !Ref PipelineName
+      RoleArn: !GetAtt CodePipelineExecutionRole.Arn
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: "1"
+              Configuration:
+                RepositoryName: !Ref CodeRepository
+                BranchName: !Ref BranchName
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: SourceArtifact
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+        - Name: GreenDeployApproval
+          Actions:
+            - Name: ManualApproval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: "1"
+        - Name: DeployGreen
+          Actions:
+            - Name: S3Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: "1"
+              Configuration:
+                BucketName: !Ref PrimaryBucket
+                Extract: true
+                ObjectKey: "v1"
+              InputArtifacts:
+                - Name: BuildArtifact
+        - Name: CacheInvalidateGreen
+          Actions:
+            - Name: CacheInvalidateGreen
+              Region: !Ref PrimaryRegion
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: Lambda
+                Version: "1"
+              Configuration:
+                FunctionName: "DecisionLambda"
+                UserParameters: '{"AccountNumber": "807812734727", "Type": "Green", "DistributionId" : "E3JKA36S1MEKHB"}'
+              InputArtifacts:
+                - Name: BuildArtifact
+              RunOrder: 1
+        - Name: DeployBlueApproval
+          Actions:
+            - Name: SecondManualApproval
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: "1"
+              Configuration:
+                CustomData: "Please enter Yes to confirm deployment or No to Rollback"
+          OnFailure:
+            Conditions:
+              - Result: 'ROLLBACK'
+                Rules:
+                  - Name: MyLambdaRule
+                    RuleTypeId:
+                      Category: Rule
+                      Owner: AWS
+                      Provider: LambdaInvoke
+                      Version: '1'
+                    Configuration:
+                      FunctionName: "DecisionLambda"
+                      UserParameters: '{"AccountNumber": "807812734727", "Type": "Rollback", "DistributionId" : 
+                      "E3JKA36S1MEKHB"}'
+                    InputArtifacts: []
+        - Name: DeployBlue
+          Actions:
+            - Name: S3Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: "1"
+              Configuration:
+                BucketName: !Ref PrimaryBucket
+                Extract: true
+              InputArtifacts:
+                - Name: BuildArtifact
+        - Name: CacheInvalidateBlue
+          Actions:
+            - Name: CacheInvalidate
+              Region: !Ref PrimaryRegion
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: Lambda
+                Version: "1"
+              Configuration:
+                FunctionName: "DecisionLambda"
+                UserParameters: '{"AccountNumber": "807812734727", "Type": "Blue", "DistributionId" : 
+                      "E3JKA36S1MEKHB"}'
+              InputArtifacts:
+                - Name: BuildArtifact
+              RunOrder: 1
+
+
+  ####    ###    ##     ##
+  ##    ## ##   ###   ###
+  ##   ##   ##  #### ####
+  ##  ##     ## ## ### ##
+  ##  ######### ##     ##
+  ##  ##     ## ##     ##
+  #### ##     ## ##     ##
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: CodeBuildLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}}'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}:*'
+        - PolicyName: CodeBuildArtifactsBucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:PutObject'
+                  - 's3:PutObjectAcl'
+                  - 's3:PutObjectVersionAcl'
+                  - 's3:DeleteObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${BuildArtifactsBucket}/*'
+                  - !Sub 'arn:aws:s3:::${ArtifactSecondaryRegionBucket}/*'
+                  - !Sub 'arn:aws:s3:::${PrimaryBucket}/*'
+                  - !Sub 'arn:aws:s3:::${PrimaryBucket}'
+        - PolicyName: CodeBuildParameterStore
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action: 'ssm:GetParameters'
+                Resource: '*'
+        - PolicyName: stagingCodeBuildCrossAccountPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Sub 'arn:aws:iam::${ProdAccountNo}:role/*'
+        - PolicyName: stagingBucketAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:DeleteObject
+                  - s3:PutObjectVersionAcl
+                Resource:
+                  - !Sub 'arn:aws:s3:::${PrimaryBucket}'
+                  - !Sub 'arn:aws:s3:::${PrimaryBucket}/*'
+
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Action: 'sts:AssumeRole'
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+
+  CodePipelineExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                  - 'lambda:InvokeFunction'
+                  - 'lambda:ListFunctions'
+                  - 'lambda:InvokeAsyc'
+                Resource: '*'
+        - PolicyName: CodePipelineCodeAndArtifactsS3Bucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action: 's3:*'
+                Resource: !Sub 'arn:aws:s3:::${BuildArtifactsBucket}/*'
+              -
+                Effect: Allow
+                Action: 's3:*'
+                Resource: !Sub 'arn:aws:s3:::${ArtifactSecondaryRegionBucket}/*'
+              -
+                Effect: Allow
+                Action: 's3:*'
+                Resource: !Sub 'arn:aws:s3:::${PrimaryBucket}/*'
+              -
+                Effect: Allow
+                Action: 'codecommit:*'
+                Resource: !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${CodeRepository}'
+
+        - PolicyName: CodePipelineCodeBuildAndCloudformationAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - 'codebuild:StartBuild'
+                  - 'codebuild:BatchGetBuilds'
+                Resource:
+                  - !Sub 'arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${CodeBuildProject}'
+                  - !Sub 'arn:aws:codebuild:${SecondaryRegion}:${AWS::AccountId}:project/${CodeBuildProject}'
+              -
+                Effect: Allow
+                Action:
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:DeleteStack'
+                  - 'cloudformation:UpdateStack'
+                  - 'cloudformation:CreateChangeSet'
+                  - 'cloudformation:ExecuteChangeSet'
+                  - 'cloudformation:DeleteChangeSet'
+                  - 'cloudformation:DescribeChangeSet'
+                  - 'cloudformation:SetStackPolicy'
+                  - 'cloudformation:SetStackPolicy'
+                  - 'cloudformation:ValidateTemplate'
+                Resource:
+                  - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ProjectName}*/*'
+                  - !Sub 'arn:aws:cloudformation:${SecondaryRegion}:${AWS::AccountId}:stack/${ProjectName}*/*'
+                  - !Sub 'arn:aws:cloudformation:${SecondaryRegion}:aws:transform/Serverless-2016-10-31'
+        - PolicyName: prodCrossAccountPolicyExecutionRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Sub 'arn:aws:iam::${ProdAccountNo}:role/*'
+
+  EventRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: eb-pipeline-execution
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: codepipeline:StartPipelineExecution
+                Resource: !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref Pipeline ] ]
+
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - 'CodeCommit Repository State Change'
+        resources:
+          - !Join [ '', [ 'arn:aws:codecommit:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodeRepository ] ]
+        detail:
+          event:
+            - referenceCreated
+            - referenceUpdated
+          referenceType:
+            - branch
+          referenceName:
+            - !Ref BranchName
+      Targets:
+        - Arn:
+            !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref Pipeline ] ]
+          RoleArn: !GetAtt EventRole.Arn
+          Id: codepipeline-AppPipeline
+

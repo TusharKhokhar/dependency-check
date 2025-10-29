@@ -1,0 +1,2 @@
+"Label","Thing","ThingType","LocationName","DeviceName","AutoSelectPrinter","MultithreadPrint","GuestCopy","GuestScan","PrintUSBAsGuest","PrintUSBWithAccount","PJLPrint","PdfiumPrint","DebugLog","ClearLogsAfter","TimeOut","AutomaticSoftwareUpdate"
+"Label","Thing 06","kiosk","Location Name","IPPDevice2",false,"true",false,false,false,false,false,false,false,7,60,true

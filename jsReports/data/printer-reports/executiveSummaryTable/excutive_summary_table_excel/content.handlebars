@@ -1,0 +1,241 @@
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metro/4.1.5/css/metro.min.css">
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js'></script>
+    <style>
+        .border-bottom {
+            border-bottom: 1px solid hsl(210deg 8% 85%);
+        }
+        .gray-color {
+            color: rgba(0,0,0,0.6) !important;
+        }
+        table thead th {
+            color: rgba(0,0,0,0.6) !important;
+        }
+        table thead tr {
+          border-bottom: 1px solid hsl(210deg 8% 85%);
+          background-color: hsl(210deg 17% 93%);
+
+        }
+        table tr {
+            font-size: 12px;
+        }
+        img {
+            with: 40px;
+            height: 40px;
+        }
+        .section-header {
+            background-color: #f6f8fa;
+        }
+        .table {
+             border: 1px solid  hsl(210deg 8% 85%) !important;
+             width: calc(32.46% - 24px) !important;
+             margin-right: 24px;
+      
+        }
+    
+        .data-section {
+          border-bottom: 1px solid  hsl(210deg 8% 85%) !important;
+          justify-content: space-between;
+        }
+
+        .space-between {
+          justify-content: space-between;
+        }
+        .font-weight--bold {
+          font-weight: bold !important;
+          color: #000 !important;
+        }
+  
+        .row {
+          display: flex; 
+          flex-direction: row; 
+          flex-wrap: wrap; 
+
+        }
+    </style>
+  </head>
+  <body class="px-8 mt-8">
+      <p class="gray-color">{{data.date}}</p>
+      <div class="row ml-0 mt-2 border-bottom pb-2" style="justify-content: space-between">
+        <h4>Executive summary</h4>
+        <img src="https://bigxpose-staging-s3buckettenantuploads-1wvdvfn9ctcvc.s3.amazonaws.com/Logos/629a663abf686e00095dc16c/web.png"/>
+      </div>
+
+    <div class="row">
+      <table class='table mt-8' name="General Statistics">
+            <thead class="border-none">
+                <tr>
+                    <th colspan="2" class="font-weight--bold">Genaral Statistics</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.general.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{isPageNumber this.value this.title ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <table class='table mt-8' name="Printer Summary">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Printer Summary</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.printers.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <table class='table mt-8' name="Color Composition">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Color Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.colorComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        <table class='table mt-8' name="Job Composition">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Job Submission Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.jobSubmissionComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <table class='table mt-8' name="Duplex composition">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Duplex Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.duplexComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+<table class='table mt-8' name="Staple Option">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Staple Option</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.stapleComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+    <table class='table mt-8' name="Paper Size Option">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Paper Size Option</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.paperSizeComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.paperName}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <table class='table mt-8' name="Orientation Composition">
+            <thead class="border-none">
+                <tr>
+                    <th class="font-weight--bold">Orientation Composition</th>
+                    <th>PAGES</th>
+                    <th>Total %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.orientationComposition.summaryDetails}}
+                <tr class='border-bottom'>
+                    <td class="font-weight--bold">{{this.title}}</td>
+                    <td class="gray-color">{{hasDecimal this.page ../data.decimalSeparator}}</td>
+                      <td class="gray-color">{{roundNumber this.percent ../data.decimal ../data.decimalSeparator}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+
+        <table name="Hourly reports">
+    <tr>
+        <th>Time</th>
+        <th>Total Printed Pages</th>
+    </tr>
+    {{#each data.hourly}}
+        <tr>
+            <td data-cell-type="string">{{this.title}}</td>
+            <td data-cell-type="number">{{hasDecimal this.data ../data.decimalSeparator}}</td>
+
+        </tr>
+    {{/each}}
+</table>
+<table name="Daily reports">
+    <tr>
+        <th>Day</th>
+        <th>Total Printed Pages</th>
+    </tr>
+    {{#each data.daily}}
+        <tr>
+            <td data-cell-type="string">{{this.title}}</td>
+            <td data-cell-type="number">{{hasDecimal this.data ../data.decimalSeparator}}</td>
+
+        </tr>
+    {{/each}}
+</table>
+    </div>
+    </body>
+</html>

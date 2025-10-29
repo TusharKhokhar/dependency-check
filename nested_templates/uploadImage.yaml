@@ -1,0 +1,1073 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  upload image rules and event bus
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  Stage:
+    Type: String
+  Domain:
+    Type: String
+  DomainName:
+    Type: String
+  ApiKey:
+    Type: String
+  ReplicationBucketName:
+    Type: String
+  BaseDomainName:
+    Type: String
+  RegionType:
+    Type: String
+  MongoDBConnection:
+    Type: String
+  DatabaseName:
+    Type: String
+  MongoDBReadWriteAccess:
+    Type: String
+  Environment:
+    Type: String
+    Default: server
+  AxiosMaxRetries:
+    Type: String
+    Default: "3"
+
+Resources:
+
+  Fileprocess:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: fileprocessupload
+
+  S3InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref S3BucketUploadEventFunc
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::*
+
+  S3BucketUploadEventFunc:
+    Type: AWS::Serverless::Function
+    DependsOn: Fileprocess
+    Properties:
+      Handler: handler.lambda_handler
+      Runtime: python3.12
+      Tracing: Active
+      MemorySize: 128
+      Timeout: 5
+      CodeUri: ../s3PutEvent/
+      Description: triggers when a new file is created
+      Environment:
+        Variables:
+          eventBusName: 'fileprocessupload'
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Role: !GetAtt S3BucketUploadEventFuncIAMRole.Arn
+
+  ImportLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-ImportLambdaIamRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: LambdaS3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::*
+        - PolicyName: LambdaIoTAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iot:*
+                Resource: "*"
+        - PolicyName: LambdaSecretAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetResourcePolicy
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:ListSecretVersionIds
+                  - secretsmanager:ListSecrets
+                  - ec2:CreateNetworkInterface
+                Resource:
+                  - "*"
+        - PolicyName: LambdaEmailAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:*
+                Resource:
+                  - "*"
+
+  AssumeRoleSTS:
+    Type: AWS::IAM::Role
+    DependsOn:
+      - ImportLambdaRole
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt ImportLambdaRole.Arn
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: LambdaS3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::*
+        - PolicyName: LambdaIoTAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iot:*
+                Resource: "*"
+        - PolicyName: LambdaSecretAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetResourcePolicy
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:ListSecretVersionIds
+                  - secretsmanager:ListSecrets
+                  - ec2:CreateNetworkInterface
+                Resource:
+                  - "*"
+        - PolicyName: LambdaEmailAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ses:*
+                Resource:
+                  - "*"
+
+  ImportLambda:
+    DependsOn:
+      - ImportLambdaRole
+      - AssumeRoleSTS
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 300
+      CodeUri: ../importLambda/
+      Description: triggers when a new file is created
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Ref MongoDBReadWriteAccess
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          stage: 'Prod'
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          domainName: !Ref DomainName
+          Stage: !Ref Stage
+          senderEmail: !Sub 'DoNotReply@${DomainName}'
+          roleName: !Ref AssumeRoleSTS
+          awsAccountNumber: !Sub "${AWS::AccountId}"
+          environment: "server"
+      Layers:
+        - !Ref DependenciesLayerAPICall
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Role: !GetAtt ImportLambdaRole.Arn
+
+  S3BucketUploadEventFuncIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-S3BucketUploadEventFuncIAMRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:lambda:*:${AWS::AccountId}:function:*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: LambdaPutEventBusPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource:
+                  - !GetAtt Fileprocess.Arn
+                  - !Sub "arn:aws:events:*:${AWS::AccountId}:event-bus/fileprocessupload"
+
+  S3BucketConvertedEventFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 30
+      CodeUri: ../s3EventConverted/
+      Description: triggers when a new file is created
+      Environment:
+        Variables:
+          domainName: !Ref Domain
+      Role: !GetAtt S3BucketConvertedEventFuncIAMRole.Arn
+      Layers:
+        - !Ref DependenciesLayerAPICall
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+  S3BucketConvertedEventFuncIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-S3BucketConvertedEventFuncIAMRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+  EmailParserFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 2048
+      Timeout: 256
+      CodeUri: ../emailEventFunction/
+      Description: triggers when a new email is received
+      Layers:
+        - !Ref DependenciesLayerAPICall
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Environment:
+        Variables:
+          domainName: !Ref Domain
+          bucketName: !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}"
+          urlDomain: !Ref DomainName
+          publicApiId: !Ref ApiKey
+          minimumAttachmentSize: 7
+          maximumAttachmentLimit: 25
+          mongoDBConnection: !Ref MongoDBConnection
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage] ]
+          awsAccountNumber: !Ref AWS::AccountId
+          environment: !Ref Environment
+          region: !Ref "AWS::Region"
+          axiosMaxRetries: !Ref AxiosMaxRetries
+      Role: !GetAtt EmailParserFuncIamRole.Arn  # Refer to the new unique role here
+
+  IppFileEventRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-IppFileEventRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: IppFileEventAllowPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::*
+              - Effect: Allow
+                Action:
+                  - "execute-api:ManageConnections"
+                  - "execute-api:Invoke"
+                Resource: !Sub "arn:aws:execute-api:*:*:*"
+              - Effect: Allow
+                Action:
+                  - "iot:*"
+                "Resource": "*"
+
+  IppFileEvent:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 60
+      CodeUri: ../ippFileEvent/
+      Description: triggers when a new binary file is received
+      Layers:
+        - !Ref DependenciesLayerAPICall
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+      Environment:
+        Variables:
+          domainName: !Ref DomainName
+          bucketName: !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}"
+          region: !Sub "${AWS::Region}"
+          dbName: !Join [ "",[!Ref DatabaseName, "-",!Ref Stage] ]
+          environment: !Sub "server"
+          awsAccountNumber: !Sub "${AWS::AccountId}"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+      Role: !GetAtt IppFileEventRole.Arn  # Refer to the new unique role here
+
+  S3InvokeLambdaPermissionIppFiles:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref IppFileEvent
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::*
+
+  # Define a new unique IAM role
+  EmailParserFuncIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cloud-saas-api-EmailParserFuncIamRole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess                
+      Policies:
+        - PolicyName: LambdaS3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::*          
+
+  EmailParserFuncLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref EmailParserFunc
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::*
+
+  ImportLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ImportLambda
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::*
+
+  DependenciesLayerAPICall:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: server-layer-axios
+      Description: utility dependencies.
+      ContentUri: ../emailEventFunction/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs20.x
+
+  PythonImageLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: conversion_lay
+      Description: utility dependencies.
+      ContentUri: ../pythonImgConversion/dependencies/
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.11
+
+  S3InvokeLambdaPermissionConverted:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref S3BucketConvertedEventFunc
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::*
+
+  WorkItemBucketBackupRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:s3:::*"
+            Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+  BucketBackupPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetReplicationConfiguration'
+              - 's3:ListBucket'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}"
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}-converted"
+          - Action:
+              - 's3:GetObjectVersion'
+              - 's3:GetObjectVersionAcl'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}"
+                  - /*
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}-converted"
+                  - /*
+          - Action:
+              - 's3:ReplicateObject'
+              - 's3:ReplicateDelete'
+            Effect: Allow
+            Resource:
+              - !Join
+                - ''
+                - - !Sub "arn:aws:s3:::${ReplicationBucketName}"
+                  - /*
+              - !Join
+                - ''
+                - - !Sub "arn:aws:s3:::${ReplicationBucketName}-converted"
+                  - /*
+      PolicyName: BucketBackupPolicy
+      Roles:
+        - !Ref WorkItemBucketBackupRole
+
+  S3BucketTenantUploadsFiles:
+    DependsOn:
+      - S3BucketUploadEventFunc
+      - ImportLambda
+    DeletionPolicy: Retain
+    Type: 'AWS::S3::Bucket'
+    Description: Tenant would be uploading data in this bucket
+    Properties:
+      BucketName: !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}"
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      ReplicationConfiguration:
+        Role: !GetAtt
+          - WorkItemBucketBackupRole
+          - Arn
+        Rules:
+          - Destination:
+              Bucket: !Sub "arn:aws:s3:::${ReplicationBucketName}"
+              StorageClass: STANDARD
+            Id: Backup
+            Prefix: 'Logos'
+            Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ReportsDeletion
+            Prefix: Reports
+            Status: Enabled
+            ExpirationInDays: 1
+            NoncurrentVersionExpirationInDays: 1
+          - Id: FileDeletion
+            Prefix: PublicUploads
+            Status: Enabled
+            ExpirationInDays: 1
+            NoncurrentVersionExpirationInDays: 1
+          - Id: EmailDeletion
+            Prefix: Email
+            Status: Enabled
+            ExpirationInDays: 1
+            NoncurrentVersionExpirationInDays: 1
+          - Id: EmailServiceFileDeletion
+            Prefix: EmailService
+            Status: Enabled
+            ExpirationInDays: 7
+            NoncurrentVersionExpirationInDays: 1
+          - Id: ImportFileDeleteRule
+            Prefix: Import
+            Status: Enabled
+            ExpirationInDays: 1
+            NoncurrentVersionExpirationInDays: 1
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+            AllowedOrigins:
+              - '*'
+            ExposedHeaders:
+              - "Access-Control-Allow-Origin"
+              - "ETag"
+            MaxAge: '3600'
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:Put'
+            Function: !GetAtt S3BucketUploadEventFunc.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "PublicUploads/"
+          - Event: 's3:ObjectCreated:Put'
+            Function: !GetAtt EmailParserFunc.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "Email/"
+          - Event: 's3:ObjectCreated:Put'
+            Function: !GetAtt ImportLambda.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "Import/"
+
+  S3BucketTenantConvertedUploadsFiles:
+    DependsOn: S3BucketTenantUploadsFiles
+    DeletionPolicy: Retain
+    Type: 'AWS::S3::Bucket'
+    Description: converted files are stored in this bucket
+    Properties:
+      BucketName: !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}-converted"
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      ReplicationConfiguration:
+        Role: !GetAtt
+          - WorkItemBucketBackupRole
+          - Arn
+        Rules:
+          - Destination:
+              Bucket: !Sub "arn:aws:s3:::${ReplicationBucketName}-converted"
+              StorageClass: STANDARD
+            Id: ReplicatePrimaryToSecondary
+#            Prefix: 'PublicUploads'
+            Status: Enabled
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+            AllowedOrigins:
+              - '*'
+            ExposedHeaders:
+              - "Access-Control-Allow-Origin"
+              - "ETag"
+            MaxAge: '3600'
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeletionRuleConverted
+            Prefix: PublicUploads
+            Status: Enabled
+            ExpirationInDays: 7
+            NoncurrentVersionExpirationInDays: 1
+          - Id: DeletionRuleIpp
+            Prefix: IppUploads
+            Status: Enabled
+            ExpirationInDays: 7
+            NoncurrentVersionExpirationInDays: 1
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "PublicUploads/"
+            Function: !GetAtt S3BucketConvertedEventFunc.Arn
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "IppUploads/"
+            Function: !GetAtt IppFileEvent.Arn
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketTenantUploadsFiles
+      PolicyDocument:
+        Statement:
+          - Sid: AllowSESPuts
+            Effect: Allow
+            Principal:
+              Service: ses.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/*'
+            Condition:
+              StringEquals:
+                aws:Referer: !Ref AWS::AccountId
+  SesRuleSet:
+    Type: 'AWS::SES::ReceiptRuleSet'
+    Properties:
+      RuleSetName: !Sub 'ses-rule-set-${Stage}'
+
+  SesRule:
+    Type: 'AWS::SES::ReceiptRule'
+    DependsOn:
+      - S3BucketTenantUploadsFiles
+      - BucketPolicy
+    Properties:
+      Rule:
+        Actions:
+          - S3Action:
+              BucketName: !Ref S3BucketTenantUploadsFiles
+              ObjectKeyPrefix: Email
+        Enabled: true
+        ScanEnabled: true
+      RuleSetName: !Ref SesRuleSet
+  #lambda functions
+
+  ContainerizedLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.us-east-1.amazonaws.com/asposetotal:latest'
+      Description: 'Containerized lambda used for file conversion'
+      MemorySize: 10000
+      PackageType: 'Image'
+      Role: !GetAtt 'LambdaRoleForConvFunctions.Arn'
+      Timeout: 900
+
+  PubFileContainerizedLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/libreoffice:latest'
+      Architectures:
+        - x86_64
+      Description: 'Containerized lambda used for .pub file conversion'
+      MemorySize: 10000
+      PackageType: 'Image'
+      Role: !GetAtt 'LambdaRoleForConvFunctions.Arn'
+      Timeout: 900
+
+  PythonImageLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.11
+      MemorySize: 10240
+      Role: !GetAtt 'LambdaRoleForConvFunctions.Arn'
+      Timeout: 900
+      CodeUri: ../pythonImgConversion/handler/
+      Layers:
+        - !Ref PythonImageLayer
+        - 'arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-Pillow:8'
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  ErrorLogsConversionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Tracing: Active
+      MemorySize: 256
+      Timeout: 29
+      CodeUri: ../logFileConversionError/
+      Description: Error stream in the cloudwatch logs for conversion of file will trigger this lambda
+      Role: !GetAtt 'LambdaRoleForConvFunctions.Arn'
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          mongoDBConnection: !Ref MongoDBConnection
+          MongoDBReadWriteAccess: !Ref MongoDBReadWriteAccess
+          dbName: !Join [ "",[ !Ref DatabaseName, "-",!Ref Stage ] ]
+          stage: 'Prod'
+          S3BucketTenantUploads: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+          S3BucketTenantUploadsConverted: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}-converted'
+          domainName: !Ref Domain
+      Layers:
+        - !Ref DependenciesLayerAPICall
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  PubFileContainerizedLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${PubFileContainerizedLambda}'
+      RetentionInDays: 30
+
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ErrorLogsConversionFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "logs.amazonaws.com"
+      SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${PythonImageLambda}:*'
+
+  PermissionForEventsToInvokeLambdaPubFile:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ErrorLogsConversionFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "logs.amazonaws.com"
+      SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${PubFileContainerizedLambda}:*'
+
+  PermissionForEventsToInvokeLambdaContainer:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ErrorLogsConversionFunction
+      Action: "lambda:InvokeFunction"
+      Principal: "logs.amazonaws.com"
+      SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ContainerizedLambda}:*'
+
+  SubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn: PermissionForEventsToInvokeLambda
+    Properties:
+      DestinationArn: !GetAtt ErrorLogsConversionFunction.Arn
+      LogGroupName:
+        Fn::Join:
+          - ''
+          - - "/aws/lambda/"
+            - Ref: PythonImageLambda
+      FilterPattern: "Error Processing File"
+
+
+  SubscriptionFilterPubFile:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn:
+      - PermissionForEventsToInvokeLambdaPubFile
+      - PubFileContainerizedLambdaLogGroup
+    Properties:
+      DestinationArn: !GetAtt ErrorLogsConversionFunction.Arn
+      LogGroupName:
+        Fn::Join:
+          - ''
+          - - "/aws/lambda/"
+            - Ref: PubFileContainerizedLambda
+      FilterPattern: "Error Processing File"
+
+  SubscriptionFilter2:
+    Type: AWS::Logs::SubscriptionFilter
+    DependsOn: PermissionForEventsToInvokeLambdaContainer
+    Properties:
+      DestinationArn: !GetAtt ErrorLogsConversionFunction.Arn
+      LogGroupName:
+        Fn::Join:
+          - ''
+          - - "/aws/lambda/"
+            - Ref: ContainerizedLambda
+      FilterPattern: "Error Processing File"
+
+  LambdaRoleForConvFunctions:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+          - Sid: Statement2
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/MongoDBReadWriteAccess'
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+      Path: /
+      Policies:
+        - PolicyName: tenantBucketInlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              Action:
+                - s3:Get*
+                - s3:Put*
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}/PublicUploads/*'
+                - !Sub 'arn:aws:s3:::cloud-${BaseDomainName}-${RegionType}-${Stage}-converted/PublicUploads/*'
+        - PolicyName: ECRImageAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - ecr:SetRepositoryPolicy
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:CompleteLayerUpload
+                  - ecr:DescribeImages
+                  - ecr:DescribeRepositories
+                  - ecr:UploadLayerPart
+                  - ecr:ListImages
+                  - ecr:InitiateLayerUpload
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetRepositoryPolicy
+                  - ecr:PutImage
+                Resource: "*"
+              - Sid: VisualEditor1
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  AsposeTotalRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Image: all types"
+      EventBusName: !GetAtt Fileprocess.Name
+      EventPattern:
+        detail-type:
+          - S3PutEventTrigger
+        source:
+          - my-custom-event
+        detail:
+          File_extension:
+            - ".doc"
+            - ".docx"
+            - ".rtf"
+            - ".txt"
+            - ".htm"
+            - ".html"
+            - ".xml"
+            - ".ppt"
+            - ".pptx"
+            - ".xls"
+            - ".xlsx"
+            - ".pdf"
+            - ".svg"
+            - ".epub"
+            - ".vsd"
+            - ".xps"
+            - ".oxps"
+            - ".odt"
+            - ".odp"
+            - ".ods"
+            - ".svg"
+            - ".epub"
+            - ".vsd"
+            - ".oxps"
+            - ".wmf"
+            - ".webp"
+      Name: AsposeTotalConv
+      Targets:
+        - Arn: !GetAtt
+            - ContainerizedLambda
+            - Arn
+          Id: Id20
+
+  ImageRules:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Images conversion"
+      EventBusName: !GetAtt Fileprocess.Name
+      EventPattern:
+        detail-type:
+          - S3PutEventTrigger
+        source:
+          - my-custom-event
+        detail:
+          File_extension:
+            - ".png"
+            - ".heic"
+            - ".jpg"
+            - ".jpeg"
+            - ".gif"
+            - ".bmp"
+            - ".tif"
+            - ".tiff"
+            - ".heif"
+      Name: ImageConversion
+      Targets:
+        - Arn: !GetAtt
+            - PythonImageLambda
+            - Arn
+          Id: Id21
+
+
+  PubFileRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: ".pub file conversion"
+      EventBusName: !GetAtt Fileprocess.Name
+      EventPattern:
+        detail-type:
+          - S3PutEventTrigger
+        source:
+          - my-custom-event
+        detail:
+          File_extension:
+            - ".pub"
+      Name: PubFileConversion
+      Targets:
+        - Arn: !GetAtt
+            - PubFileContainerizedLambda
+            - Arn
+          Id: Id22
+
+  EventBridgeLambdaPermissionAsposeTotal:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ContainerizedLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt AsposeTotalRule.Arn
+
+  EventBridgeLambdaPermissionPubFile:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PubFileContainerizedLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PubFileRule.Arn
+
+  EventBridgeLambdaPermissionImageConversion:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PythonImageLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ImageRules.Arn
+
+Outputs:
+  BucketArn:
+    Value: !Ref S3BucketTenantUploadsFiles
+  BucketArnConverted:
+    Value: !Ref S3BucketTenantConvertedUploadsFiles
+
+

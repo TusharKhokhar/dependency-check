@@ -1,0 +1,36 @@
+{
+  "name": "jsreport-server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server",
+    "jsreport": "jsreport"
+  },
+  "jsreport": {
+    "entryPoint": "server.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "123.0.1",
+    "fs-extra": "11.1.1",
+    "jsreport": "4.9.0"
+  },
+  "devDependencies": {
+    "archiver": "^5.3.1",
+    "aws-sdk": "2.1395.0",
+    "p-limit": "^4.0.0",
+    "rimraf": "^5.0.1"
+  },
+  "overrides": {
+    "@jsreport/jsreport-express": {
+      "multer": "2.0.2"
+    },
+    "@jsreport/jsreport-import-export": {
+      "multer": "2.0.2",
+      "form-data": "4.0.4"
+    },
+    "@jsreport/jsreport-assets": {
+      "@jsreport/office": {
+        "form-data": "4.0.4"
+      }
+    }
+  }
+}

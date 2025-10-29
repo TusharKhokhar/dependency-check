@@ -1,0 +1,24 @@
+{
+    "name": "printer_usage_excel",
+    "recipe": "html-to-xlsx",
+    "engine": "handlebars",
+    "chrome": {
+        "printBackground": true
+    },
+    "creationDate": {
+        "$$date": 1601043022559
+    },
+    "modificationDate": {
+        "$$date": 1725549803048
+    },
+    "data": {
+        "shortid": "wEAQ4A6Iv"
+    },
+    "htmlToXlsx": {
+        "htmlEngine": "chrome"
+    },
+    "_id": "n9YOhVWeAFle0uGf",
+    "shortid": "Ox9ju3B",
+    "$entitySet": "templates"
+}
+

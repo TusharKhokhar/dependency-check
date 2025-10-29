@@ -1,0 +1,67 @@
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metro/4.1.5/css/metro.min.css">
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js'></script>
+      <style>
+		{#asset value_added_styles.css @encoding=utf8}
+	</style>
+</head>
+<body class="px-8 mt-8">
+      <p class="gray-color">{{data.date}}</p>
+      <div class="row ml-0 mt-2 border-bottom" style="justify-content: space-between">
+        <h4>Value Added Summary</h4>
+        <img src="{{data.logo}}"/>
+      </div>
+
+      {{#if data.Customers.length}}
+      {{#each data.Customers}}
+      <p class="mb-2 font-weight--bold">{{CustomerName}}</p>
+     <table class='mb-8 col1 sub-report-table'>
+                <tr class="bg-row">
+                    <th class="table-heading table-th width-50px">Username</th>
+                    {{#isAmountSumGreaterThanZero users}}
+                    <th class="table-heading table-th width-50px">Amount</th>
+                    {{/isAmountSumGreaterThanZero}}
+                    <th class="table-heading table-th width-50px padding-right-30px">Payment Type</th>
+                </tr>
+             {{#if users.length}}
+
+             {{#each users}}
+                <tr class="dash">
+                    <td class="right-aligned width-50px">{{_id.Username}}</td>
+                    {{#isAmountSumGreaterThanZero ../users}}
+                    <td class="right-aligned width-50px">{{../../data.currency}}{{roundNumber Amount ../../data.decimal ../../data.decimalSeparator}}</td>
+                    {{/isAmountSumGreaterThanZero}}
+                    <td class="right-aligned width-50px padding-right-30px">{{PaymentType}}</td>
+                 </tr>
+                {{/each}}
+                <tr class="total top-border">
+                            <td class="right-aligned bold width-50px">Total:</td>
+                             {{#isAmountSumGreaterThanZero users}}
+                            <td class="right-aligned bold width-50px">{{../data.currency}}{{calculateTotalAmount users ../data.decimal ../data.decimalSeparator}}</td>
+                            {{/isAmountSumGreaterThanZero}}
+                            <td class="right-aligned bold width-50px padding-right-30px"></td>
+                </tr>
+                {{else}}
+                            {{!-- Display a message when there is no data --}}
+                            <tr class="center-aligned">
+                                <td colspan="4">No data available</td>
+                            </tr>
+                {{/if}}
+            
+        </table>
+        {{/each}}
+         <table class="mb-8 col1 sub-report-table">
+        <tr class="total top-border">
+                            <td class="right-aligned bold width-50px">Grand Total:</td>
+                            {{#isGrandAmountSumGreaterThanZero}}
+                            <td class="right-aligned bold width-50px">{{data.currency}}{{calculateGrandTotal data.decimal data.decimalSeparator}}</td>
+                            {{/isGrandAmountSumGreaterThanZero}}
+                            <td class="right-aligned bold width-50px padding-right-30px"></td>
+                </tr>
+        </table>
+            {{resetFlags}}
+        {{/if}}
+  </body>
+</html>

@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  secondary region dependencies creation
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Parameters:
+  Stage:
+    Type: String
+  RegionType:
+    Type: String
+  BaseDomainName:
+    Type: String
+
+Resources:
+
+  bucketCreation:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          const { S3Client, CreateBucketCommand, PutBucketVersioningCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
+          const response = require('cfn-response');
+
+          exports.handler = async (event, context) => {
+            const s3 = new S3Client({ region: event.ResourceProperties.DestBucketRegion });
+
+            try {
+              if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+                const bucketParams = {
+                  Bucket: event.ResourceProperties.DestBucketName
+                };
+                await s3.send(new CreateBucketCommand(bucketParams));
+                console.log('Bucket created successfully');
+
+                const versioningParams = {
+                  Bucket: event.ResourceProperties.DestBucketName,
+                  VersioningConfiguration: {
+                    Status: 'Enabled'
+                  }
+                };
+                await s3.send(new PutBucketVersioningCommand(versioningParams));
+                console.log('Bucket versioning enabled successfully');
+
+                const corsParams = {
+                  Bucket: event.ResourceProperties.DestBucketName,
+                  CORSConfiguration: {
+                    CORSRules: [
+                      {
+                        AllowedHeaders: ['*'],
+                        AllowedMethods: ['GET', 'PUT'],
+                        AllowedOrigins: ['*'],
+                        ExposeHeaders: [
+                          'Access-Control-Allow-Origin',
+                          'ETag',
+                          'x-amz-server-side-encryption'
+                        ],
+                        MaxAgeSeconds: 3600
+                      }
+                    ]
+                  }
+                };
+                await s3.send(new PutBucketCorsCommand(corsParams));
+                console.log('Bucket CORS configuration enabled successfully');
+
+                response.send(event, context, response.SUCCESS, {}, event.ResourceProperties.DestBucketName);
+              } else if (event.RequestType === 'Delete') {
+                console.log(`Please delete the ${event.PhysicalResourceId} bucket.`);
+                response.send(event, context, response.SUCCESS, {}, event.PhysicalResourceId);
+              }
+            } catch (error) {
+              console.error(error);
+              response.send(event, context, response.FAILED, error);
+            }
+          };
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 128
+      Description: A Lambda function for creation of resources in secondary region
+      Layers:
+        - !Sub "arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14"
+
+  TriggerLambda:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt bucketCreation.Arn
+      DestBucketName: !Sub 'cloud-${BaseDomainName}-${RegionType}-${Stage}'
+      DestBucketRegion:  'us-west-2'
+
+  TriggerLambdaSecond:
+    Type: Custom::LambdaTrig
+    Properties:
+      ServiceToken: !GetAtt bucketCreation.Arn
+      DestBucketName: !Sub "cloud-${BaseDomainName}-${RegionType}-${Stage}-converted"
+      DestBucketRegion: 'us-west-2'
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:*"
+      Path: /
+      Policies:
+        - PolicyName: LambdaExecutionRolePolicyBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - "s3:*"
+                Resource: "*"

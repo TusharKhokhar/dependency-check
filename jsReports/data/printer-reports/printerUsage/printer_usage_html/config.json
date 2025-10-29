@@ -1,0 +1,32 @@
+{
+    "name": "printer_usage_html",
+    "recipe": "html",
+    "engine": "handlebars",
+    "chrome": {
+        "printBackground": true,
+        "format": "",
+        "waitForJS": false,
+        "marginTop": "40",
+        "marginBottom": "40",
+        "landscape": false
+    },
+    "creationDate": {
+        "$$date": 1601043022550
+    },
+    "modificationDate": {
+        "$$date": 1725549777670
+    },
+    "data": {
+        "shortid": "wEAQ4A6Iv"
+    },
+    "_id": "qzbVf7M4UQOGBUU9",
+    "shortid": "3QeAIzW",
+    "htmlToXlsx": {
+        "htmlEngine": "chrome"
+    },
+    "chromeImage": {
+        "fullPage": true
+    },
+    "pdfOperations": [],
+    "$entitySet": "templates"
+}

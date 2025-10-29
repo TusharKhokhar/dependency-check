@@ -1,0 +1,32 @@
+{
+  "Parameters": {
+    "DomainName": "eprintitsaas.org",
+    "MongoDBConnection": "main.uh6ww",
+    "DatabaseName": "saas",
+    "Stage": "dev",
+    "BucketStage": "dev",
+    "Environment": "server",
+    "APIDomain": "api.eprintitsaas.org",
+    "ApiKey": "cweex23xieo2hznx2ln3hr8ru23crucl",
+    "BucketName": "eprintitsaas.org",
+    "MultiregionEndpoint": "api.eprintitsaas.org",
+    "WebSocketDomainName": "wss.eprintitsaas.org",
+    "WildCardDomain": "*.eprintitsaas.org",
+    "RootDomainName": "eprintitsaas.org.",
+    "HostedZoneID": "Z06090811AQGD1FCWU3TD",
+    "BackupRegion": "us-west-2",
+    "ReplicationBucketName": "eprintitsaas.org-second",
+    "BaseDomainName": "eprintitsaas",
+    "ReplicationRegion": "us-west-2",
+    "FixedCloudfrontZoneId": "Z2FDTNDATAQYW2",
+    "RegionTypeSecondary": "sec",
+    "MainAccountNo": "377667345683",
+    "RegionType": "pri",
+    "JwtTokenExpiry": "24",
+    "RefreshTokenExpiry": "48",
+    "IotTokenExpiry": "12h",
+    "QAAccountNumber": "412239032805",
+    "ProdAccountNumber": "807812734727",
+    "Sha1Algorithm": "sha1"
+  }
+}

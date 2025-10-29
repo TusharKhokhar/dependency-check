@@ -1,0 +1,20 @@
+{
+    "name": "excutive_summary_table_excel",
+    "engine": "handlebars",
+    "recipe": "html-to-xlsx",
+    "data": {
+        "shortid": "Y__UmlbO8"
+    },
+    "htmlToXlsx": {
+        "htmlEngine": "chrome"
+    },
+    "shortid": "KFZHk40eP",
+    "creationDate": {
+        "$$date": 1655958171168
+    },
+    "modificationDate": {
+        "$$date": 1725265406640
+    },
+    "_id": "vD72SLrF7MzAAxnH",
+    "$entitySet": "templates"
+}

@@ -1,0 +1,31 @@
+<p>Dear User,</p>
+
+<p>Your translated files are ready for download. For your security, these links are private and will expire after a set time.</p>
+
+<p><strong>Translated Documents:</strong></p>
+<ul>
+    <% data.job.forEach((post) => { %>
+        <li>
+            <a href="<%= post.signedAccessLink.signedUrl %>" target="_blank" rel="noopener noreferrer">
+                <%= post.originalFileName %>
+            </a>
+        </li>
+    <% }) %>
+</ul>
+
+<% if (data.job.some(file => file.audioUrl)) { %>
+    <p><strong>Audio Versions:</strong></p>
+    <ul>
+        <% data.job.forEach((post) => { %>
+            <% if (post.audioUrl) { %>
+                <li>
+                    <a href="<%= post.audioUrl %>" target="_blank" rel="noopener noreferrer">
+                        <%= post.audioDisplayName || post.originalFileName.replace(/\.[^/.]+$/, '.mp3') %> (Audio)
+                    </a>
+                </li>
+            <% } %>
+        <% }) %>
+    </ul>
+<% } %>
+
+<p>Best regards,<br/>ePRINTit Team</p>
