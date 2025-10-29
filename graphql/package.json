@@ -27,7 +27,7 @@
     "@vendia/serverless-express": "4.12.6",
     "authorizenet": "1.0.10",
     "aws-sdk-client-mock": "^4.1.0",
-    "axios": "^1.10.0",
+    "axios": "^1.12.2",
     "axios-mock-adapter": "^2.1.0",
     "base64url": "^3.0.1",
     "bcryptjs": "^3.0.2",

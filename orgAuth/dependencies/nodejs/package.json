@@ -10,7 +10,7 @@
     "@azure/msal-node": "^2.9.2",
     "acorn": "^8.11.3",
     "aws4": "^1.13.0",
-    "axios": "^1.7.4",
+    "axios": "^1.12.2",
     "base64url": "^3.0.1",
     "saslprep": "^1.0.3",
     "bcryptjs": "^3.0.2",

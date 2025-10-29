@@ -19,7 +19,7 @@
     "@azure/msal-node": "^2.9.2",
     "acorn": "^8.11.3",
     "aws4": "^1.13.0",
-    "axios": "1.8.4",
+    "axios": "^1.12.2",
     "base64url": "^3.0.1",
     "bcryptjs": "^3.0.2",
     "body-parser": "1.20.3",
@@ -50,6 +50,6 @@
     "chai": "4.3.10",
     "serverless-offline": "^13.6.0",
     "sinon": "^19.0.2",
-    "supertest": "^7.0.0"
+    "supertest": "^7.1.4"
   }
 }

@@ -27,10 +27,8 @@
       "multer": "2.0.2",
       "form-data": "4.0.4"
     },
-    "@jsreport/jsreport-assets": {
       "@jsreport/office": {
         "form-data": "4.0.4"
       }
-    }
   }
 }
